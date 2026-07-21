@@ -1,0 +1,27 @@
+{
+  "name": "شاشة مواقيت الصلاة",
+  "short_name": "مواقيت الصلاة",
+  "description": "شاشة عرض مواقيت الصلاة للمساجد — تعمل بدون إنترنت",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#04241c",
+  "theme_color": "#04241c",
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

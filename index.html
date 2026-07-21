@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="emerald">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>مواقيت الصلاة</title>
+  <meta name="theme-color" content="#04241c">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- طبقة صور الخلفيات -->
+  <div id="bg-photos" style="display:none">
+    <div class="bg-img" id="bg-a"></div>
+    <div class="bg-img" id="bg-b"></div>
+    <div id="bg-overlay"></div>
+  </div>
+
+  <div id="screen">
+    <!-- الترويسة -->
+    <header>
+      <div class="mosque-block">
+        <img id="mosque-photo" alt="" style="display:none">
+        <svg id="mosque-icon" class="mosque-icon" viewBox="0 0 64 64" fill="currentColor" aria-hidden="true">
+          <path d="M32 4c1 5-6 8-6 13 0 3.3 2.7 6 6 6s6-2.7 6-6c0-5-7-8-6-13z"/>
+          <path d="M32 25c-8 0-13 6-13 12v3h26v-3c0-6-5-12-13-12z"/>
+          <rect x="10" y="42" width="44" height="4" rx="1.5"/>
+          <path d="M12 48v12h8v-7c0-2 1.6-3.5 3.5-3.5S27 51 27 53v7h10v-7c0-2 1.6-3.5 3.5-3.5S44 51 44 53v7h8V48H12z"/>
+          <rect x="6" y="30" width="4" height="26" rx="1.5"/>
+          <circle cx="8" cy="27" r="2.4"/>
+          <rect x="54" y="30" width="4" height="26" rx="1.5"/>
+          <circle cx="56" cy="27" r="2.4"/>
+        </svg>
+        <div>
+          <div id="mosque-name">مسجد الرحمة</div>
+          <div id="city-name">القدس</div>
+        </div>
+      </div>
+
+      <div class="dates-block">
+        <div id="day-name"></div>
+        <div class="dates-line">
+          <span id="hijri-date"></span>
+          <span class="sep"></span>
+          <span id="greg-date"></span>
+        </div>
+      </div>
+
+      <div class="header-side">
+        <div class="status-chips">
+          <div id="net-indicator" class="status-chip off">
+            <i class="dot"></i><span>غير متصل</span>
+          </div>
+          <div id="sound-indicator" class="status-chip warn">
+            <i class="dot"></i><span>اضغط لتفعيل الصوت</span>
+          </div>
+        </div>
+        <button id="btn-settings" title="الإعدادات (S)" aria-label="الإعدادات">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+            <circle cx="12" cy="12" r="3.2"/>
+            <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.55-1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34h.09a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87v.09a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1z"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- شريط رمضان (يظهر تلقائياً في الشهر الفضيل) -->
+    <div id="ramadan-bar" style="display:none">
+      <span class="rb-greeting">🌙 رمضان مبارك</span>
+      <span class="rb-item"><span id="ramadan-day" class="rb-strong"></span></span>
+      <span class="rb-sep"></span>
+      <span class="rb-item">الإمساك <span id="ramadan-imsak" class="rb-strong"></span></span>
+      <span class="rb-sep"></span>
+      <span class="rb-item">الإفطار <span id="ramadan-iftar" class="rb-strong"></span></span>
+    </div>
+
+    <!-- الوسط -->
+    <main>
+      <div class="clock-wrap">
+        <span id="clock-main">00:00</span>
+        <span class="clock-side">
+          <span id="clock-seconds">00</span>
+          <span id="clock-suffix"></span>
+        </span>
+      </div>
+
+      <div class="countdown-wrap">
+        <span id="countdown-label"></span>
+        <span id="countdown-value"></span>
+      </div>
+    </main>
+
+    <!-- بطاقات الصلوات -->
+    <div id="prayers-row"></div>
+
+    <!-- شريط الأذكار والإعلانات -->
+    <div id="ticker-bar">
+      <span class="ticker-star">✦</span>
+      <span id="ticker-badge" class="ticker-badge" style="display:none">إعلان</span>
+      <span id="ticker-text"></span>
+      <span class="ticker-star">✦</span>
+    </div>
+  </div>
+
+  <!-- شاشة الأذان -->
+  <div id="adhan-overlay" class="overlay">
+    <svg class="big-icon" viewBox="0 0 64 64" fill="currentColor" aria-hidden="true">
+      <path d="M32 4c1 5-6 8-6 13 0 3.3 2.7 6 6 6s6-2.7 6-6c0-5-7-8-6-13z"/>
+      <path d="M32 25c-8 0-13 6-13 12v3h26v-3c0-6-5-12-13-12z"/>
+      <rect x="10" y="42" width="44" height="4" rx="1.5"/>
+      <path d="M12 48v12h8v-7c0-2 1.6-3.5 3.5-3.5S27 51 27 53v7h10v-7c0-2 1.6-3.5 3.5-3.5S44 51 44 53v7h8V48H12z"/>
+    </svg>
+    <div class="overlay-kalima">اللهُ أَكْبَر، اللهُ أَكْبَر</div>
+    <div class="overlay-title" id="adhan-prayer-name"></div>
+    <div id="adhan-time"></div>
+    <div class="overlay-sub">لَا إِلَهَ إِلَّا الله</div>
+  </div>
+
+  <!-- شاشة اقتراب الإقامة -->
+  <div id="iqama-soon-overlay" class="overlay">
+    <div id="iqama-soon-label"></div>
+    <div id="iqama-soon-value"></div>
+    <div class="overlay-sub">اسْتَوُوا وَاعْتَدِلُوا وَسُدُّوا الْخَلَل</div>
+  </div>
+
+  <!-- شاشة الصلاة -->
+  <div id="prayer-overlay" class="overlay">
+    <div class="overlay-kalima" id="prayer-overlay-name"></div>
+    <div class="overlay-sub">سَوُّوا صُفُوفَكُمْ فَإِنَّ تَسْوِيَةَ الصَّفِّ مِنْ تَمَامِ الصَّلَاةِ</div>
+    <div class="phone-warning">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+        <rect x="7" y="2.5" width="10" height="19" rx="2.2"/>
+        <path d="M11 18.5h2M3 3l18 18" stroke-linecap="round"/>
+      </svg>
+      الرجاء إغلاق الهواتف المحمولة
+    </div>
+  </div>
+
+  <!-- شاشة الإعلانات الكاملة -->
+  <div id="ann-overlay" class="overlay">
+    <div class="ann-badge">📢 إعلانات المسجد</div>
+    <div id="ann-text" class="ann-text"></div>
+    <div id="ann-dots" class="adhkar-dots"></div>
+  </div>
+
+  <!-- شاشة الأذكار بعد الصلاة -->
+  <div id="adhkar-overlay" class="overlay">
+    <div class="adhkar-header">
+      <span class="ticker-star">✦</span>
+      <span>أذكار وأدعية ما بعد الصلاة</span>
+      <span class="ticker-star">✦</span>
+    </div>
+    <div id="adhkar-text" class="adhkar-text"></div>
+    <div id="adhkar-rep" class="adhkar-rep" style="display:none">
+      <span id="adhkar-rep-live" class="rep-live">1</span>
+      <span class="rep-sep">/</span>
+      <span id="adhkar-rep-total" class="rep-total">33</span>
+      <span class="rep-label">مرة</span>
+    </div>
+    <div id="adhkar-dots" class="adhkar-dots"></div>
+    <div class="overlay-sub">تَقَبَّلَ اللهُ طَاعَتَكُمْ</div>
+  </div>
+
+  <!-- نافذة الإعدادات -->
+  <div id="settings-modal">
+    <div class="settings-panel">
+      <h2>⚙ الإعدادات</h2>
+      <div class="settings-hint">اضغط حرف S في أي وقت لفتح هذه النافذة — الإعدادات تُحفظ على الجهاز نفسه</div>
+
+      <h3>المسجد والموقع</h3>
+      <div class="form-row">
+        <label>اسم المسجد</label>
+        <input type="text" id="set-mosque-name">
+      </div>
+      <div class="form-row">
+        <label>صورة / شعار الجامع</label>
+        <input type="file" id="set-photo-file" accept="image/*">
+      </div>
+      <div class="form-row">
+        <span id="photo-status" class="field-status"></span>
+        <button type="button" id="btn-photo-remove" class="mini-btn">إزالة الصورة</button>
+      </div>
+      <div class="form-row">
+        <label>المدينة</label>
+        <select id="set-city"></select>
+      </div>
+      <div id="custom-city-row" style="display:none">
+        <div class="form-row">
+          <label>اسم الموقع</label>
+          <input type="text" id="set-custom-name" placeholder="مثال: قريتنا">
+        </div>
+        <div class="form-row">
+          <label>خط العرض</label>
+          <input type="number" id="set-custom-lat" step="0.0001">
+          <label>خط الطول</label>
+          <input type="number" id="set-custom-lng" step="0.0001">
+        </div>
+      </div>
+
+      <h3>الحساب الفلكي</h3>
+      <div class="form-row">
+        <label>طريقة الحساب</label>
+        <select id="set-method"></select>
+      </div>
+      <div class="form-row">
+        <label>مذهب العصر</label>
+        <select id="set-asr">
+          <option value="1">الجمهور (الشافعي والمالكي والحنبلي)</option>
+          <option value="2">الحنفي</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>تعديل التاريخ الهجري</label>
+        <select id="set-hijri-adjust">
+          <option value="-2">-2 يوم</option>
+          <option value="-1">-1 يوم</option>
+          <option value="0">بدون تعديل</option>
+          <option value="1">+1 يوم</option>
+          <option value="2">+2 يوم</option>
+        </select>
+      </div>
+
+      <h3>المظهر والألوان</h3>
+      <div class="form-row">
+        <label>التصميم</label>
+        <select id="set-theme">
+          <option value="emerald">أخضر زمردي</option>
+          <option value="night">أزرق ليلي</option>
+          <option value="blackgold">أسود ذهبي</option>
+          <option value="royal">بنفسجي ملكي</option>
+          <option value="light">فاتح</option>
+          <option value="custom">🎨 ألوان مخصصة</option>
+        </select>
+      </div>
+      <div id="custom-colors-block" style="display:none">
+        <div class="colors-grid">
+          <div><label>الخلفية</label><input type="color" id="set-color-bg1"></div>
+          <div><label>الخلفية الثانوية</label><input type="color" id="set-color-bg2"></div>
+          <div><label>اللون المميز</label><input type="color" id="set-color-accent"></div>
+          <div><label>النص</label><input type="color" id="set-color-text"></div>
+        </div>
+      </div>
+      <div class="form-row">
+        <label>نظام الوقت</label>
+        <select id="set-time-format">
+          <option value="24">24 ساعة</option>
+          <option value="12">12 ساعة</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>إظهار الثواني</label>
+        <input type="checkbox" id="set-show-seconds">
+      </div>
+      <div class="form-row">
+        <label>أسماء الأشهر الميلادية</label>
+        <select id="set-month-names">
+          <option value="levant">شرقية (كانون الثاني، شباط...)</option>
+          <option value="western">غربية (يناير، فبراير...)</option>
+        </select>
+      </div>
+
+      <div class="form-row">
+        <label>اتجاه العرض</label>
+        <select id="set-orientation">
+          <option value="auto">تلقائي (حسب الشاشة)</option>
+          <option value="landscape">أفقي دائماً</option>
+          <option value="portrait">عمودي دائماً</option>
+        </select>
+      </div>
+
+      <h3>المناسبات ووضع رمضان</h3>
+      <div class="form-row">
+        <label>المناسبات الهجرية والسنن تلقائياً</label>
+        <input type="checkbox" id="set-hijri-events">
+      </div>
+      <div class="settings-hint">عاشوراء، المولد النبوي، الإسراء والمعراج، الأعياد، الأيام البيض، سورة الكهف يوم الجمعة، صيام الاثنين والخميس... تظهر في الشريط تلقائياً بيومها.</div>
+      <div class="form-row">
+        <label>وضع رمضان تلقائياً</label>
+        <input type="checkbox" id="set-ramadan-auto">
+      </div>
+      <div class="form-row">
+        <label>الإمساك قبل الفجر بـ (دقائق)</label>
+        <input type="number" id="set-imsak-offset" min="0" max="60">
+      </div>
+      <div class="form-row">
+        <label>إظهار «يليها التراويح» على العشاء</label>
+        <input type="checkbox" id="set-taraweeh-note">
+      </div>
+      <div class="settings-hint">في رمضان يظهر تلقائياً: شريط «رمضان مبارك» مع الإمساك والإفطار، والعد التنازلي يصبح «المتبقي للإفطار 🌙».</div>
+
+      <h3>خلفية الشاشة</h3>
+      <div class="form-row">
+        <label>نوع الخلفية</label>
+        <select id="set-bg-mode">
+          <option value="pattern">زخرفة إسلامية (الافتراضي)</option>
+          <option value="photos">صور (مساجد أو غيرها)</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>إضافة صور خلفية</label>
+        <input type="file" id="set-bg-files" accept="image/*" multiple>
+      </div>
+      <div class="form-row">
+        <span id="bg-status" class="field-status"></span>
+        <button type="button" id="btn-bg-clear" class="mini-btn">إزالة كل الخلفيات</button>
+      </div>
+      <div class="form-row">
+        <label>تعتيم الخلفية (لوضوح النص)</label>
+        <input type="range" id="set-bg-overlay" min="0" max="90" step="5"
+               oninput="document.getElementById('bg-overlay-val').textContent=this.value+'%'">
+        <span id="bg-overlay-val" class="field-status" style="flex:none">60%</span>
+      </div>
+      <div class="form-row">
+        <label>تبديل الصور كل (دقائق)</label>
+        <input type="number" id="set-bg-interval" min="1" max="240">
+      </div>
+
+      <h3>صوت الأذان</h3>
+      <div class="form-row">
+        <label>تشغيل صوت عند الأذان</label>
+        <input type="checkbox" id="set-sound-enabled">
+      </div>
+      <div class="form-row">
+        <label>نوع الصوت</label>
+        <select id="set-sound-mode">
+          <option value="chime">تنبيه مدمج (بدون ملفات)</option>
+          <option value="makkah">أذان الحرم المكي 🕋</option>
+          <option value="madinah">أذان المسجد النبوي</option>
+          <option value="quds">أذان المسجد الأقصى 🕌</option>
+          <option value="alhindi">أذان عبد الرحمن الهندي</option>
+          <option value="file">ملف أذان مرفوع</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>رفع ملف أذان (MP3)</label>
+        <input type="file" id="set-adhan-file" accept="audio/*">
+      </div>
+      <div class="form-row">
+        <span id="adhan-file-status" class="field-status"></span>
+        <button type="button" id="btn-adhan-test" class="mini-btn">▶ تجربة</button>
+        <button type="button" id="btn-adhan-stop" class="mini-btn">⏹ إيقاف</button>
+      </div>
+      <div class="settings-hint">ملاحظة: المتصفح يمنع الصوت التلقائي قبل أول ضغطة على الشاشة. لشاشات العرض الدائمة شغّل المتصفح بوضع الكشك (kiosk) مع خيار السماح بالتشغيل التلقائي.</div>
+
+      <h3>الإقامة (دقائق بعد الأذان)</h3>
+      <div class="iqama-grid">
+        <div><label>الفجر</label><input type="number" id="set-iqama-fajr" min="0" max="120"></div>
+        <div><label>الظهر</label><input type="number" id="set-iqama-dhuhr" min="0" max="120"></div>
+        <div><label>العصر</label><input type="number" id="set-iqama-asr" min="0" max="120"></div>
+        <div><label>المغرب</label><input type="number" id="set-iqama-maghrib" min="0" max="120"></div>
+        <div><label>العشاء</label><input type="number" id="set-iqama-isha" min="0" max="120"></div>
+      </div>
+
+      <h3>الشاشات التلقائية</h3>
+      <div class="form-row">
+        <label>مدة شاشة الأذان (دقائق)</label>
+        <input type="number" id="set-adhan-min" min="0" max="30">
+      </div>
+      <div class="form-row">
+        <label>مدة شاشة الصلاة (دقائق)</label>
+        <input type="number" id="set-prayer-min" min="0" max="60">
+      </div>
+      <div class="form-row">
+        <label>مدة شاشة الأذكار بعد الصلاة (دقائق)</label>
+        <input type="number" id="set-adhkar-min" min="0" max="60">
+      </div>
+      <div class="form-row">
+        <label>مدة عرض كل ذكر (ثوانٍ — كافية للقراءة)</label>
+        <input type="number" id="set-adhkar-each" min="10" max="180">
+      </div>
+      <div class="form-row" style="display:block">
+        <label>أذكار ما بعد الصلاة (سطر لكل ذكر)</label>
+        <textarea id="set-adhkar-texts"></textarea>
+      </div>
+      <div class="settings-hint">لتحديد عدد التكرار حسب السنة أضف <b dir="ltr">| العدد</b> بعد الذكر — مثال: <span dir="rtl">سُبْحَانَ اللهِ | 33</span> — يظهر على الشاشة عدّاد مباشر للتكرار، ومدة عرض الذكر تطول تلقائياً بما يكفي لترديده.</div>
+
+      <h3>الجمعة</h3>
+      <div class="form-row">
+        <label>وقت أذان الجمعة</label>
+        <select id="set-jumua-mode">
+          <option value="auto">تلقائي (وقت الظهر)</option>
+          <option value="fixed">وقت محدد</option>
+        </select>
+      </div>
+      <div class="form-row" id="jumua-time-row" style="display:none">
+        <label>الوقت المحدد</label>
+        <input type="time" id="set-jumua-time">
+      </div>
+      <div class="form-row">
+        <label>مدة الخطبة حتى الإقامة (دقائق)</label>
+        <input type="number" id="set-khutbah-min" min="5" max="120">
+      </div>
+
+      <h3>شريط الأذكار</h3>
+      <div class="form-row">
+        <label>تفعيل الشريط</label>
+        <input type="checkbox" id="set-ticker-enabled">
+      </div>
+      <textarea id="set-ticker-texts" placeholder="اكتب كل ذكر في سطر منفصل"></textarea>
+
+      <h3>الإعلانات</h3>
+      <div class="form-row">
+        <label>تفعيل الإعلانات</label>
+        <input type="checkbox" id="set-ann-enabled">
+      </div>
+      <textarea id="set-ann-texts" placeholder="اكتب كل إعلان في سطر منفصل — تظهر في الشريط السفلي مع شارة «إعلان»"></textarea>
+      <div class="form-row" style="margin-top:10px">
+        <label>شاشة إعلانات كاملة</label>
+        <input type="checkbox" id="set-annscreen-enabled">
+      </div>
+      <div class="form-row">
+        <label>تظهر كل (دقائق — 0 لتعطيل التكرار)</label>
+        <input type="number" id="set-annscreen-every" min="0" max="720">
+      </div>
+      <div class="form-row">
+        <label>مدة عرض كل إعلان (ثوانٍ)</label>
+        <input type="number" id="set-annscreen-duration" min="5" max="300">
+      </div>
+      <div class="form-row" style="display:block">
+        <label>أوقات ظهور محددة (سطر لكل وقت، مثل 21:30)</label>
+        <textarea id="set-annscreen-times" style="height:70px" placeholder="20:45&#10;13:30"></textarea>
+      </div>
+      <div class="settings-hint">شاشة الإعلانات لا تظهر أبداً أثناء الأذان أو الصلاة أو قبل الأذان بأقل من 3 دقائق.</div>
+
+      <h3>الاتصال والتحديث عن بُعد</h3>
+      <div class="form-row">
+        <label>تفعيل التحديث عن بُعد</label>
+        <input type="checkbox" id="set-remote-enabled">
+      </div>
+      <div class="form-row">
+        <label>رابط ملف الإعدادات (JSON)</label>
+        <input type="text" id="set-remote-url" placeholder="https://..." dir="ltr">
+      </div>
+      <div class="form-row">
+        <label>فترة الفحص (دقائق)</label>
+        <input type="number" id="set-remote-interval" min="1" max="240">
+      </div>
+      <div class="settings-hint">
+        ضع ملف JSON على الإنترنت (مثلاً GitHub Gist) فيه الإعدادات المطلوب تحديثها — مثل الإعلانات أو أوقات الإقامة — والشاشة ستسحبه تلقائياً وهي متصلة. استخدم «تصدير الإعدادات» للحصول على قالب جاهز.
+        <div id="remote-sync-status"></div>
+      </div>
+      <div class="form-row">
+        <button type="button" id="btn-export" class="mini-btn">⬇ تصدير الإعدادات</button>
+        <label class="mini-btn" style="cursor:pointer">⬆ استيراد إعدادات
+          <input type="file" id="set-import-file" accept="application/json" style="display:none">
+        </label>
+        <span id="import-status" class="field-status"></span>
+      </div>
+
+      <div class="settings-buttons">
+        <button id="btn-save">💾 حفظ وتطبيق</button>
+        <button id="btn-cancel">إلغاء</button>
+        <button id="btn-reset">استعادة الافتراضي</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/praytimes.js"></script>
+  <script src="js/cities.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/settings.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

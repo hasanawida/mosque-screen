@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>لوحة إدارة شاشات المساجد</title>
+  <link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand">
+      <svg viewBox="0 0 64 64" fill="currentColor" aria-hidden="true">
+        <path d="M32 4c1 5-6 8-6 13 0 3.3 2.7 6 6 6s6-2.7 6-6c0-5-7-8-6-13z"/>
+        <path d="M32 25c-8 0-13 6-13 12v3h26v-3c0-6-5-12-13-12z"/>
+        <rect x="10" y="42" width="44" height="4" rx="1.5"/>
+        <path d="M12 48v12h8v-7c0-2 1.6-3.5 3.5-3.5S27 51 27 53v7h10v-7c0-2 1.6-3.5 3.5-3.5S44 51 44 53v7h8V48H12z"/>
+      </svg>
+      <div>
+        <h1>لوحة إدارة الشاشات</h1>
+        <div class="sub">إدارة جميع الجوامع والشاشات من مكان واحد</div>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <span id="publish-status" class="publish-status"></span>
+      <button id="btn-gist-config" class="btn ghost">🔗 إعداد النشر</button>
+      <button id="btn-publish-all" class="btn primary">☁ نشر الكل</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <!-- قائمة الجوامع -->
+    <aside class="sidebar">
+      <div class="sidebar-head">
+        <span>الجوامع والشاشات</span>
+        <button id="btn-add-mosque" class="btn small primary">＋ إضافة</button>
+      </div>
+      <div id="mosque-list" class="mosque-list"></div>
+      <div class="sidebar-foot">
+        <div id="mosque-count"></div>
+      </div>
+    </aside>
+
+    <!-- المحرر -->
+    <main id="editor" class="editor">
+      <div id="empty-state" class="empty-state">
+        <div class="empty-icon">🕌</div>
+        <h2>أضف أول جامع</h2>
+        <p>اضغط «＋ إضافة» لإنشاء شاشة جديدة، ثم عدّل إعداداتها وانشرها لتصل لشاشة المسجد أينما كانت.</p>
+      </div>
+
+      <div id="editor-form" style="display:none">
+        <div class="editor-head">
+          <input type="text" id="m-name" class="mosque-title-input" placeholder="اسم المسجد">
+          <div class="editor-actions">
+            <button id="btn-preview" class="btn ghost">👁 معاينة حية</button>
+            <button id="btn-download" class="btn ghost">⬇ تنزيل JSON</button>
+            <button id="btn-copy-url" class="btn ghost">📋 نسخ رابط الشاشة</button>
+            <button id="btn-duplicate" class="btn ghost">⧉ تكرار</button>
+            <button id="btn-delete" class="btn danger">🗑 حذف</button>
+          </div>
+        </div>
+        <div id="m-remote-hint" class="remote-hint"></div>
+
+        <div class="grid-2">
+          <section class="card">
+            <h3>الموقع والحساب</h3>
+            <div class="form-row"><label>المدينة</label><select id="m-city"></select></div>
+            <div id="m-custom-city" style="display:none">
+              <div class="form-row"><label>اسم الموقع</label><input type="text" id="m-custom-name"></div>
+              <div class="form-row">
+                <label>خط العرض</label><input type="number" id="m-custom-lat" step="0.0001">
+                <label>خط الطول</label><input type="number" id="m-custom-lng" step="0.0001">
+              </div>
+            </div>
+            <div class="form-row"><label>طريقة الحساب</label><select id="m-method"></select></div>
+            <div class="form-row"><label>مذهب العصر</label>
+              <select id="m-asr">
+                <option value="1">الجمهور</option>
+                <option value="2">الحنفي</option>
+              </select>
+            </div>
+            <div class="form-row"><label>تعديل الهجري</label>
+              <select id="m-hijri">
+                <option value="-2">-2</option><option value="-1">-1</option>
+                <option value="0">0</option>
+                <option value="1">+1</option><option value="2">+2</option>
+              </select>
+            </div>
+          </section>
+
+          <section class="card">
+            <h3>المظهر</h3>
+            <div class="form-row"><label>التصميم</label>
+              <select id="m-theme">
+                <option value="emerald">أخضر زمردي</option>
+                <option value="night">أزرق ليلي</option>
+                <option value="blackgold">أسود ذهبي</option>
+                <option value="royal">بنفسجي ملكي</option>
+                <option value="light">فاتح</option>
+                <option value="custom">🎨 ألوان مخصصة</option>
+              </select>
+            </div>
+            <div id="m-colors" class="colors-grid" style="display:none">
+              <div><label>الخلفية</label><input type="color" id="m-color-bg1"></div>
+              <div><label>خلفية 2</label><input type="color" id="m-color-bg2"></div>
+              <div><label>المميز</label><input type="color" id="m-color-accent"></div>
+              <div><label>النص</label><input type="color" id="m-color-text"></div>
+            </div>
+            <div class="form-row"><label>اتجاه العرض</label>
+              <select id="m-orientation">
+                <option value="auto">تلقائي</option>
+                <option value="landscape">أفقي دائماً</option>
+                <option value="portrait">عمودي دائماً</option>
+              </select>
+            </div>
+            <div class="form-row"><label>نظام الوقت</label>
+              <select id="m-timeformat"><option value="24">24 ساعة</option><option value="12">12 ساعة</option></select>
+            </div>
+            <div class="form-row"><label>إظهار الثواني</label><input type="checkbox" id="m-seconds"></div>
+            <div class="form-row"><label>أسماء الأشهر</label>
+              <select id="m-months">
+                <option value="levant">شرقية (كانون...)</option>
+                <option value="western">غربية (يناير...)</option>
+              </select>
+            </div>
+            <div class="form-row"><label>صوت الأذان</label><input type="checkbox" id="m-sound"></div>
+            <div class="form-row"><label>نوع الصوت</label>
+              <select id="m-sound-mode">
+                <option value="chime">تنبيه مدمج</option>
+                <option value="makkah">أذان الحرم المكي 🕋</option>
+                <option value="madinah">أذان المسجد النبوي</option>
+                <option value="quds">أذان المسجد الأقصى 🕌</option>
+                <option value="alhindi">أذان عبد الرحمن الهندي</option>
+                <option value="file">ملف مرفوع على الشاشة</option>
+              </select>
+            </div>
+          </section>
+
+          <section class="card">
+            <h3>الإقامة (دقائق بعد الأذان)</h3>
+            <div class="iqama-grid">
+              <div><label>الفجر</label><input type="number" id="m-iq-fajr" min="0" max="120"></div>
+              <div><label>الظهر</label><input type="number" id="m-iq-dhuhr" min="0" max="120"></div>
+              <div><label>العصر</label><input type="number" id="m-iq-asr" min="0" max="120"></div>
+              <div><label>المغرب</label><input type="number" id="m-iq-maghrib" min="0" max="120"></div>
+              <div><label>العشاء</label><input type="number" id="m-iq-isha" min="0" max="120"></div>
+            </div>
+            <div class="form-row"><label>شاشة الأذان (د)</label><input type="number" id="m-adhan-min" min="0" max="30"></div>
+            <div class="form-row"><label>شاشة الصلاة (د)</label><input type="number" id="m-prayer-min" min="0" max="60"></div>
+            <div class="form-row"><label>شاشة الأذكار (د)</label><input type="number" id="m-adhkar-min" min="0" max="60"></div>
+            <div class="form-row"><label>مدة كل ذكر (ثوانٍ)</label><input type="number" id="m-adhkar-each" min="10" max="180"></div>
+          </section>
+
+          <section class="card">
+            <h3>🌙 المناسبات ورمضان</h3>
+            <div class="form-row"><label>المناسبات الهجرية تلقائياً</label><input type="checkbox" id="m-hijri-events"></div>
+            <div class="form-row"><label>وضع رمضان تلقائياً</label><input type="checkbox" id="m-ramadan-auto"></div>
+            <div class="form-row"><label>الإمساك قبل الفجر (د)</label><input type="number" id="m-imsak-offset" min="0" max="60"></div>
+            <div class="form-row"><label>«يليها التراويح» على العشاء</label><input type="checkbox" id="m-taraweeh-note"></div>
+          </section>
+
+          <section class="card">
+            <h3>الجمعة</h3>
+            <div class="form-row"><label>وقت الأذان</label>
+              <select id="m-jumua-mode">
+                <option value="auto">تلقائي (الظهر)</option>
+                <option value="fixed">وقت محدد</option>
+              </select>
+            </div>
+            <div class="form-row" id="m-jumua-time-row" style="display:none">
+              <label>الوقت</label><input type="time" id="m-jumua-time">
+            </div>
+            <div class="form-row"><label>مدة الخطبة (د)</label><input type="number" id="m-khutbah" min="5" max="120"></div>
+          </section>
+
+          <section class="card wide">
+            <h3>📢 الإعلانات <span class="hint-inline">— أهم ما يُحدَّث عن بُعد: سطر لكل إعلان</span></h3>
+            <div class="form-row"><label>تفعيل</label><input type="checkbox" id="m-ann-enabled"></div>
+            <textarea id="m-announcements" placeholder="درس فقه بعد صلاة العشاء يوم الثلاثاء&#10;جمعة خيرية السبت القادم"></textarea>
+            <div class="form-row" style="margin-top:10px"><label>شاشة إعلانات كاملة</label><input type="checkbox" id="m-annscreen-enabled"></div>
+            <div class="form-row"><label>تظهر كل (دقائق، 0=تعطيل)</label><input type="number" id="m-annscreen-every" min="0" max="720"></div>
+            <div class="form-row"><label>مدة كل إعلان (ثوانٍ)</label><input type="number" id="m-annscreen-duration" min="5" max="300"></div>
+            <div class="form-row" style="display:block"><label>أوقات محددة (سطر لكل وقت، مثل 21:30)</label>
+              <textarea id="m-annscreen-times" style="height:60px"></textarea>
+            </div>
+          </section>
+
+          <section class="card wide">
+            <h3>شريط الأذكار</h3>
+            <div class="form-row"><label>تفعيل</label><input type="checkbox" id="m-ticker-enabled"></div>
+            <textarea id="m-ticker"></textarea>
+          </section>
+
+          <section class="card wide">
+            <h3>أذكار ما بعد الصلاة</h3>
+            <textarea id="m-adhkar"></textarea>
+          </section>
+        </div>
+
+        <div class="save-bar">
+          <span id="save-status"></span>
+          <button id="btn-save-mosque" class="btn primary big">💾 حفظ التعديلات</button>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- نافذة إعداد النشر -->
+  <div id="gist-modal" class="modal">
+    <div class="modal-panel">
+      <h2>🔗 إعداد النشر عن بُعد</h2>
+      <p class="modal-desc">
+        النشر يتم عبر <b>GitHub Gist</b> — مجاني وبدون سيرفر. خطوات لمرة واحدة:
+      </p>
+      <ol class="steps">
+        <li>أنشئ حساباً على <span dir="ltr">github.com</span> (إن لم يكن لديك)</li>
+        <li>افتح <span dir="ltr">github.com/settings/tokens</span> ← Generate new token (classic)</li>
+        <li>فعّل صلاحية <b dir="ltr">gist</b> فقط، وانسخ الرمز هنا:</li>
+      </ol>
+      <div class="form-row"><label>رمز الوصول (Token)</label><input type="password" id="gist-token" dir="ltr" placeholder="ghp_..."></div>
+      <div class="form-row"><label>معرّف Gist (يُنشأ تلقائياً)</label><input type="text" id="gist-id" dir="ltr" placeholder="يُملأ تلقائياً عند أول نشر"></div>
+      <p class="modal-note">⚠ الرمز يُحفظ على هذا الجهاز فقط. بعد أول «نشر الكل» انسخ رابط كل شاشة (زر 📋) وضعه مرة واحدة في إعدادات الشاشة نفسها ← «التحديث عن بُعد» — وبعدها كل تعديل تنشره يصلها تلقائياً.</p>
+      <div class="modal-buttons">
+        <button id="btn-gist-save" class="btn primary">حفظ</button>
+        <button id="btn-gist-cancel" class="btn ghost">إغلاق</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- نافذة المعاينة الحية -->
+  <div id="preview-modal" class="modal">
+    <div class="preview-panel">
+      <div class="preview-head">
+        <span>معاينة حية — كما ستظهر على شاشة المسجد</span>
+        <button id="btn-preview-close" class="btn ghost">✕ إغلاق</button>
+      </div>
+      <iframe id="preview-frame" src="about:blank"></iframe>
+    </div>
+  </div>
+
+  <script src="js/praytimes.js"></script>
+  <script src="js/cities.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>
