@@ -4,6 +4,8 @@
 
 **منظومة متكاملة لشاشات عرض مواقيت الصلاة — تعمل بدون إنترنت، وتُدار عن بُعد**
 
+**تطوير: [حسن عويضة (Hasan Awida)](https://github.com/hasanawida)**
+
 [![CI](https://github.com/hasanawida/mosque-screen/actions/workflows/ci.yml/badge.svg)](https://github.com/hasanawida/mosque-screen/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-gold.svg)](LICENSE)
 
@@ -59,8 +61,14 @@ audio/              أذانات مدمجة (مصادر عامة من archive.or
 tests/              اختبارات آلية (CI)
 ```
 
+## 👨‍💻 المطوّر
+
+**حسن عويضة — Hasan Awida** · [GitHub](https://github.com/hasanawida)
+
+صُمم هذا المشروع ليخدم المساجد في فلسطين والعالم — إذا استخدمته في مسجدك أسعدني أن تخبرني.
+
 ## 📄 الترخيص
 
-[MIT](LICENSE) — استخدمه وطوّره بحرية، ونفع الله بك المساجد.
+[MIT](LICENSE) © حسن عويضة — استخدمه وطوّره بحرية، ونفع الله بك المساجد.
 
 </div>

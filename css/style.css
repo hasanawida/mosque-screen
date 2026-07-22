@@ -536,6 +536,21 @@ main {
   margin-top: 0.3vmin;
 }
 
+/* توقيع المطوّر */
+.dev-credit {
+  position: absolute;
+  bottom: 0.7vmin;
+  left: 1.6vmin;
+  font-size: 1.5vmin;
+  font-weight: 700;
+  color: var(--text-dim);
+  opacity: 0.75;
+  letter-spacing: 0.02em;
+  pointer-events: none;
+}
+
+body.layout-portrait .dev-credit { font-size: 1.9vmin; }
+
 /* ---------- الشاشات الكاملة (أذان/إقامة/صلاة) ---------- */
 .overlay {
   position: fixed;
