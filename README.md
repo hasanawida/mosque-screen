@@ -6,6 +6,9 @@
 
 **تطوير: [حسن عويضة (Hasan Awida)](https://github.com/hasanawida)**
 
+> ⚠️ **هذا مشروع شاشة المسجد** (تلفزيون/شاشة عرض + لوحة إدارة).
+> تطبيق الهاتف الشخصي (أذان تلقائي حسب موقعك) مشروع **منفصل تماماً**: [prayer-times-app](https://github.com/hasanawida/prayer-times-app)
+
 [![CI](https://github.com/hasanawida/mosque-screen/actions/workflows/ci.yml/badge.svg)](https://github.com/hasanawida/mosque-screen/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-gold.svg)](LICENSE)
 
