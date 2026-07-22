@@ -5,12 +5,42 @@
   'use strict';
 
   var ADMIN_KEY = 'mosqueAdmin.v1';
+  var TOKEN_KEY = 'mosqueAdmin.token';
+
+  /* ============================================================
+     رمز GitHub: يُخزن منفصلاً عن بقية البيانات، وبخيار المدير
+     إما بشكل دائم أو لجلسة المتصفح فقط (أكثر أماناً)
+     ============================================================ */
+  function getToken() {
+    try {
+      return localStorage.getItem(TOKEN_KEY) ||
+             sessionStorage.getItem(TOKEN_KEY) ||
+             (admin.gist && admin.gist.token) || '';
+    } catch (e) { return ''; }
+  }
+
+  function isTokenRemembered() {
+    try {
+      return !!(localStorage.getItem(TOKEN_KEY) || (admin.gist && admin.gist.token));
+    } catch (e) { return false; }
+  }
+
+  function setToken(token, remember) {
+    try {
+      localStorage.removeItem(TOKEN_KEY);
+      sessionStorage.removeItem(TOKEN_KEY);
+      if (admin.gist) admin.gist.token = ''; /* تنظيف موضع التخزين القديم */
+      if (token) {
+        (remember ? localStorage : sessionStorage).setItem(TOKEN_KEY, token);
+      }
+    } catch (e) {}
+  }
 
   /* الإعدادات الافتراضية لشاشة جديدة (متوافقة مع الشاشة نفسها) */
   var SCREEN_DEFAULTS = {
     mosqueName: 'مسجد جديد',
     cityId: 'jerusalem',
-    customCity: { name: '', lat: 31.7683, lng: 35.2137 },
+    customCity: { name: '', lat: 31.7683, lng: 35.2137, tz: '' },
     method: 'Egypt',
     asrFactor: 1,
     hijriAdjust: 0,
@@ -148,6 +178,7 @@
     g('m-custom-name').value = s.customCity.name;
     g('m-custom-lat').value = s.customCity.lat;
     g('m-custom-lng').value = s.customCity.lng;
+    g('m-custom-tz').value = s.customCity.tz || '';
     g('m-method').value = s.method;
     g('m-asr').value = String(s.asrFactor);
     g('m-hijri').value = String(s.hijriAdjust);
@@ -199,6 +230,7 @@
     s.customCity.name = g('m-custom-name').value.trim();
     s.customCity.lat = parseFloat(g('m-custom-lat').value) || 0;
     s.customCity.lng = parseFloat(g('m-custom-lng').value) || 0;
+    s.customCity.tz = g('m-custom-tz').value.trim();
     s.method = g('m-method').value;
     s.asrFactor = parseInt(g('m-asr').value, 10);
     s.hijriAdjust = parseInt(g('m-hijri').value, 10);
@@ -275,7 +307,8 @@
   /* ---------- النشر عبر Gist ---------- */
   function publishAll() {
     var status = g('publish-status');
-    if (!admin.gist.token) {
+    var token = getToken();
+    if (!token) {
       openGistModal();
       return;
     }
@@ -301,7 +334,7 @@
     fetch(url, {
       method: isNew ? 'POST' : 'PATCH',
       headers: {
-        'Authorization': 'token ' + admin.gist.token,
+        'Authorization': 'token ' + token,
         'Accept': 'application/vnd.github+json',
         'Content-Type': 'application/json'
       },
@@ -448,7 +481,9 @@
       frame.src = 'index.html';
       frame.onload = function () {
         setTimeout(function () {
-          frame.contentWindow.postMessage({ type: 'previewSettings', settings: settingsNow }, '*');
+          /* نرسل لنفس الأصل فقط — لا نستخدم '*' */
+          var target = location.origin === 'null' ? '*' : location.origin;
+          frame.contentWindow.postMessage({ type: 'previewSettings', settings: settingsNow }, target);
         }, 400);
       };
     });
@@ -460,10 +495,16 @@
     /* إعداد Gist */
     g('btn-gist-config').addEventListener('click', openGistModal);
     g('btn-gist-save').addEventListener('click', function () {
-      admin.gist.token = g('gist-token').value.trim();
+      setToken(g('gist-token').value.trim(), g('gist-remember').checked);
       admin.gist.gistId = g('gist-id').value.trim();
       save();
       g('gist-modal').style.display = 'none';
+    });
+    g('btn-gist-clear').addEventListener('click', function () {
+      setToken('', false);
+      save();
+      g('gist-token').value = '';
+      alert('تم مسح الرمز من هذا الجهاز. إذا كنت تشك بتسريبه، ألغِه أيضاً من github.com/settings/tokens');
     });
     g('btn-gist-cancel').addEventListener('click', function () {
       g('gist-modal').style.display = 'none';
@@ -481,7 +522,8 @@
   }
 
   function openGistModal() {
-    g('gist-token').value = admin.gist.token;
+    g('gist-token').value = getToken();
+    g('gist-remember').checked = isTokenRemembered() || !getToken();
     g('gist-id').value = admin.gist.gistId;
     g('gist-modal').style.display = 'flex';
   }

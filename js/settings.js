@@ -6,7 +6,7 @@ var STORAGE_KEY = 'mosqueScreen.settings.v2';
 var DEFAULT_SETTINGS = {
   mosqueName: 'مسجد الرحمة',
   cityId: 'jerusalem',
-  customCity: { name: '', lat: 31.7683, lng: 35.2137 },
+  customCity: { name: '', lat: 31.7683, lng: 35.2137, tz: '' },
   method: 'Egypt',
   asrFactor: 1,
   hijriAdjust: 0,
@@ -65,6 +65,108 @@ var DEFAULT_SETTINGS = {
   remoteIntervalMin: 5
 };
 
+/* ============================================================
+   تنقية صارمة لأي إعدادات واردة من الخارج (تحديث بعيد، استيراد
+   ملف، معاينة) — تمنع القيم التالفة من كسر الشاشة
+   ============================================================ */
+var SETTING_RANGES = {
+  hijriAdjust: [-3, 3], adhanScreenMin: [0, 30], prayerScreenMin: [0, 60],
+  adhkarScreenMin: [0, 60], adhkarSecondsEach: [10, 180], khutbahMin: [5, 120],
+  annScreenEveryMin: [0, 720], annScreenDurationSec: [5, 300], bgOverlay: [0, 90],
+  bgIntervalMin: [1, 240], remoteIntervalMin: [1, 240], imsakOffsetMin: [0, 60],
+  asrFactor: [1, 2]
+};
+var SETTING_ENUMS = {
+  monthNames: ['levant', 'western'],
+  theme: ['emerald', 'night', 'blackgold', 'royal', 'light', 'custom'],
+  jumuaMode: ['auto', 'fixed'],
+  adhanSoundMode: ['chime', 'makkah', 'madinah', 'quds', 'alhindi', 'file'],
+  bgMode: ['pattern', 'photos'],
+  orientation: ['auto', 'landscape', 'portrait']
+};
+var TIME_PATTERN = /^([01]?\d|2[0-3]):[0-5]\d$/;
+var HEX_PATTERN = /^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$/;
+
+function isValidTimeZone(tz) {
+  try { new Intl.DateTimeFormat('en', { timeZone: tz }); return true; }
+  catch (e) { return false; }
+}
+
+function cityIdExists(id) {
+  for (var i = 0; i < CITIES.length; i++) {
+    if (CITIES[i].id === id) return true;
+  }
+  return false;
+}
+
+function sanitizeSettings(incoming) {
+  var clean = {};
+  if (!incoming || typeof incoming !== 'object' || Array.isArray(incoming)) return clean;
+
+  for (var k in DEFAULT_SETTINGS) {
+    if (!(k in incoming)) continue;
+    var v = incoming[k];
+    var base = DEFAULT_SETTINGS[k];
+
+    if (typeof base === 'boolean') {
+      clean[k] = !!v;
+
+    } else if (typeof base === 'number') {
+      var n = parseFloat(v);
+      if (!isFinite(n)) continue;
+      n = Math.round(n);
+      if (k === 'timeFormat') n = n >= 18 ? 24 : 12;
+      var range = SETTING_RANGES[k];
+      if (range) n = Math.max(range[0], Math.min(range[1], n));
+      clean[k] = n;
+
+    } else if (typeof base === 'string') {
+      if (typeof v !== 'string') continue;
+      v = v.slice(0, 300);
+      if (SETTING_ENUMS[k] && SETTING_ENUMS[k].indexOf(v) === -1) continue;
+      if (k === 'jumuaTime' && !TIME_PATTERN.test(v)) continue;
+      if (k === 'cityId' && v !== 'custom' && !cityIdExists(v)) continue;
+      if (k === 'remoteUrl' && v !== '' && v.indexOf('https://') !== 0) continue;
+      clean[k] = v;
+
+    } else if (Array.isArray(base)) {
+      if (!Array.isArray(v)) continue;
+      var arr = v.filter(function (x) { return typeof x === 'string'; })
+        .slice(0, 100)
+        .map(function (x) { return x.slice(0, 500); });
+      if (k === 'annScreenTimes') {
+        arr = arr.filter(function (x) { return TIME_PATTERN.test(x); });
+      }
+      clean[k] = arr;
+
+    } else if (k === 'iqama' && v && typeof v === 'object' && !Array.isArray(v)) {
+      var iq = {};
+      ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'].forEach(function (p) {
+        var n2 = parseFloat(v[p]);
+        if (isFinite(n2)) iq[p] = Math.max(0, Math.min(180, Math.round(n2)));
+      });
+      clean.iqama = iq;
+
+    } else if (k === 'customCity' && v && typeof v === 'object' && !Array.isArray(v)) {
+      var cc = {};
+      if (typeof v.name === 'string') cc.name = v.name.slice(0, 100);
+      var la = parseFloat(v.lat), lo = parseFloat(v.lng);
+      if (isFinite(la) && la >= -90 && la <= 90) cc.lat = la;
+      if (isFinite(lo) && lo >= -180 && lo <= 180) cc.lng = lo;
+      if (typeof v.tz === 'string' && (v.tz === '' || isValidTimeZone(v.tz))) cc.tz = v.tz;
+      clean.customCity = cc;
+
+    } else if (k === 'customColors' && v && typeof v === 'object' && !Array.isArray(v)) {
+      var col = {};
+      ['bg1', 'bg2', 'accent', 'text'].forEach(function (p) {
+        if (typeof v[p] === 'string' && HEX_PATTERN.test(v[p])) col[p] = v[p];
+      });
+      clean.customColors = col;
+    }
+  }
+  return clean;
+}
+
 var settings = loadSettings();
 
 function loadSettings() {
@@ -72,7 +174,7 @@ function loadSettings() {
     var raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('mosqueScreen.settings.v1');
     if (!raw) return deepClone(DEFAULT_SETTINGS);
     var saved = JSON.parse(raw);
-    return mergeSettings(deepClone(DEFAULT_SETTINGS), saved);
+    return mergeSettings(deepClone(DEFAULT_SETTINGS), sanitizeSettings(saved));
   } catch (e) {
     return deepClone(DEFAULT_SETTINGS);
   }
@@ -103,7 +205,8 @@ function currentLocation() {
     return {
       name: settings.customCity.name || 'موقع مخصص',
       lat: parseFloat(settings.customCity.lat) || 31.7683,
-      lng: parseFloat(settings.customCity.lng) || 35.2137
+      lng: parseFloat(settings.customCity.lng) || 35.2137,
+      tz: settings.customCity.tz || ''
     };
   }
   return findCity(settings.cityId);
@@ -250,8 +353,8 @@ function initSettingsUI() {
     var reader = new FileReader();
     reader.onload = function () {
       try {
-        var incoming = JSON.parse(reader.result);
-        settings = mergeSettings(deepClone(DEFAULT_SETTINGS), mergeSettings(deepClone(settings), incoming));
+        var incoming = sanitizeSettings(JSON.parse(reader.result));
+        settings = mergeSettings(deepClone(settings), incoming);
         saveSettings();
         fillForm();
         onSettingsChanged();
@@ -303,6 +406,13 @@ function fillForm() {
   g('set-custom-name').value = settings.customCity.name;
   g('set-custom-lat').value = settings.customCity.lat;
   g('set-custom-lng').value = settings.customCity.lng;
+  g('set-custom-tz').value = settings.customCity.tz || '';
+  try {
+    var lastSync = localStorage.getItem('mosqueScreen.lastSync');
+    g('remote-sync-status').textContent = lastSync
+      ? 'آخر تحديث عن بُعد: ' + new Date(lastSync).toLocaleString('ar')
+      : '';
+  } catch (e) {}
   g('set-method').value = settings.method;
   g('set-asr').value = String(settings.asrFactor);
   g('set-hijri-adjust').value = String(settings.hijriAdjust);
@@ -364,6 +474,8 @@ function applySettings() {
   settings.customCity.name = g('set-custom-name').value.trim();
   settings.customCity.lat = parseFloat(g('set-custom-lat').value) || 0;
   settings.customCity.lng = parseFloat(g('set-custom-lng').value) || 0;
+  var customTz = g('set-custom-tz').value.trim();
+  settings.customCity.tz = (customTz && isValidTimeZone(customTz)) ? customTz : '';
   settings.method = g('set-method').value;
   settings.asrFactor = parseInt(g('set-asr').value, 10);
   settings.hijriAdjust = parseInt(g('set-hijri-adjust').value, 10);

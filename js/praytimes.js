@@ -69,6 +69,17 @@ var PrayTimes = (function () {
     return noon + (ccw ? -t : t);
   }
 
+  /* تعديل خطوط العرض العالية: إذا غاب الوقت أو تجاوز حصته من الليل */
+  function adjustHighLat(time, base, angle, night, ccw) {
+    if (isNaN(base) || isNaN(night) || typeof angle !== 'number') return time;
+    var portion = (angle / 60) * night;
+    var diff = ccw ? fixHour(base - time) : fixHour(time - base);
+    if (isNaN(time) || diff > portion) {
+      time = base + (ccw ? -portion : portion);
+    }
+    return time;
+  }
+
   /* وقت العصر حسب معامل الظل (1 للجمهور، 2 للحنفية) */
   function asrTime(jdate, lat, factor, portion) {
     var decl = sunPosition(jdate + portion).declination;
@@ -114,6 +125,19 @@ var PrayTimes = (function () {
       t.isha = sunAngleTime(jdate, lat, method.isha, 18 / 24, false);
     }
 
+    /* خطوط العرض العالية (مثل أوروبا صيفاً): لا تصل الشمس لزاوية الفجر/العشاء
+       فنعتمد طريقة الزاوية النسبية من الليل (AngleBased) المعتمدة عالمياً */
+    if (!isNaN(t.sunrise) && !isNaN(t.sunset)) {
+      var night = fixHour(t.sunrise - t.sunset);
+      t.fajr = adjustHighLat(t.fajr, t.sunrise, method.fajr, night, true);
+      if (t.isha !== null && !isMinutes(method.isha)) {
+        t.isha = adjustHighLat(t.isha, t.sunset, method.isha, night, false);
+      }
+      if (t.maghrib !== null && method.maghrib !== undefined && !isMinutes(method.maghrib)) {
+        t.maghrib = adjustHighLat(t.maghrib, t.sunset, method.maghrib, night, false);
+      }
+    }
+
     /* تحويل من التوقيت الشمسي المحلي إلى توقيت الساعة */
     var shift = tz - lng / 15;
     var keys = ['fajr', 'sunrise', 'dhuhr', 'asr', 'sunset', 'maghrib', 'isha'];
@@ -130,10 +154,15 @@ var PrayTimes = (function () {
       t.isha = t.maghrib + minutesOf(method.isha) / 60;
     }
 
-    /* بناء كائنات Date — مقرّبة لأقرب دقيقة حتى يتطابق العرض مع لحظة الأذان */
+    /* بناء كائنات Date — مقرّبة لأقرب دقيقة حتى يتطابق العرض مع لحظة الأذان.
+       عند تمرير utcBase (لحظة منتصف ليل المدينة بتوقيت UTC) تكون النتيجة
+       لحظات مطلقة دقيقة مهما كانت المنطقة الزمنية للجهاز */
     function toDate(hours) {
       if (hours === null || isNaN(hours)) return null;
       var minutes = Math.round(fixHour(hours) * 60);
+      if (typeof opts.utcBase === 'number') {
+        return new Date(opts.utcBase + minutes * 60000);
+      }
       var base = new Date(y, m - 1, d, 0, 0, 0, 0);
       return new Date(base.getTime() + minutes * 60000);
     }

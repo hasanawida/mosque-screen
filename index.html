@@ -56,6 +56,9 @@
           <div id="sound-indicator" class="status-chip warn">
             <i class="dot"></i><span>اضغط لتفعيل الصوت</span>
           </div>
+          <div id="tz-warning" class="status-chip warn" style="display:none" title="اضبط المنطقة الزمنية للجهاز من إعدادات النظام">
+            <i class="dot"></i><span>⚠ توقيت الجهاز مختلف — الأوقات بتوقيت المدينة</span>
+          </div>
         </div>
         <button id="btn-settings" title="الإعدادات (S)" aria-label="الإعدادات">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
@@ -167,7 +170,8 @@
   <div id="settings-modal">
     <div class="settings-panel">
       <h2>⚙ الإعدادات</h2>
-      <div class="settings-hint">اضغط حرف S في أي وقت لفتح هذه النافذة — الإعدادات تُحفظ على الجهاز نفسه</div>
+      <div class="settings-hint">اضغط حرف S في أي وقت لفتح هذه النافذة — الإعدادات تُحفظ على الجهاز نفسه
+        · <a href="diagnostics.html" target="_blank" style="color:var(--accent)">🩺 صفحة فحص النظام</a></div>
 
       <h3>المسجد والموقع</h3>
       <div class="form-row">
@@ -196,6 +200,23 @@
           <input type="number" id="set-custom-lat" step="0.0001">
           <label>خط الطول</label>
           <input type="number" id="set-custom-lng" step="0.0001">
+        </div>
+        <div class="form-row">
+          <label>المنطقة الزمنية</label>
+          <input type="text" id="set-custom-tz" dir="ltr" list="tz-list" placeholder="فارغ = منطقة الجهاز">
+          <datalist id="tz-list">
+            <option value="Asia/Jerusalem"></option>
+            <option value="Asia/Hebron"></option>
+            <option value="Asia/Gaza"></option>
+            <option value="Asia/Amman"></option>
+            <option value="Africa/Cairo"></option>
+            <option value="Asia/Riyadh"></option>
+            <option value="Asia/Beirut"></option>
+            <option value="Europe/Istanbul"></option>
+            <option value="Europe/London"></option>
+            <option value="Europe/Berlin"></option>
+            <option value="America/New_York"></option>
+          </datalist>
         </div>
       </div>
 
@@ -457,6 +478,7 @@
     </div>
   </div>
 
+  <script src="js/version.js"></script>
   <script src="js/praytimes.js"></script>
   <script src="js/cities.js"></script>
   <script src="js/storage.js"></script>

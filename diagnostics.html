@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>فحص النظام — مواقيت الصلاة</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, sans-serif;
+      background: #071c15; color: #f5f1e6;
+      padding: 24px; line-height: 1.8;
+    }
+    h1 { color: #d4af5a; font-size: 22px; margin-bottom: 4px; }
+    .sub { color: rgba(245,241,230,0.6); font-size: 13px; margin-bottom: 20px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
+    .card {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(212,175,90,0.25);
+      border-radius: 12px; padding: 14px 18px;
+    }
+    .card h3 { color: #d4af5a; font-size: 15px; margin-bottom: 8px; }
+    .row { display: flex; justify-content: space-between; gap: 10px; font-size: 13.5px; padding: 3px 0; }
+    .row .k { color: rgba(245,241,230,0.65); }
+    .row .v { font-weight: 700; text-align: left; direction: ltr; }
+    .ok { color: #43d17c; } .bad { color: #ff9b6a; } .warn { color: #f5b455; }
+    button {
+      font-family: inherit; font-size: 13px; font-weight: 700;
+      background: #d4af5a; color: #1c1503; border: none;
+      border-radius: 8px; padding: 7px 16px; cursor: pointer; margin-top: 8px;
+    }
+    a { color: #d4af5a; }
+    .back { display: inline-block; margin-top: 20px; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <h1>🩺 فحص النظام</h1>
+  <div class="sub">صفحة تشخيص لشاشة مواقيت الصلاة — لقطة حالة فورية لكل مكونات النظام</div>
+
+  <div class="grid">
+    <div class="card"><h3>عام</h3><div id="c-general"></div></div>
+    <div class="card"><h3>الوقت والمنطقة الزمنية</h3><div id="c-time"></div></div>
+    <div class="card"><h3>مواقيت اليوم</h3><div id="c-times"></div></div>
+    <div class="card"><h3>الاتصال والتحديث</h3><div id="c-net"></div></div>
+    <div class="card"><h3>التخزين</h3><div id="c-storage"></div></div>
+    <div class="card"><h3>الصوت</h3><div id="c-audio"></div>
+      <button id="btn-audio-test">🔊 تجربة صوت قصيرة</button>
+    </div>
+  </div>
+
+  <a class="back" href="index.html">← العودة لشاشة المواقيت</a>
+
+  <script src="js/version.js"></script>
+  <script src="js/praytimes.js"></script>
+  <script src="js/cities.js"></script>
+  <script>
+    (function () {
+      'use strict';
+      function row(k, v, cls) {
+        return '<div class="row"><span class="k">' + k + '</span><span class="v ' + (cls || '') + '">' + v + '</span></div>';
+      }
+      function esc(s) { return String(s).replace(/</g, '&lt;'); }
+
+      /* الإعدادات المحفوظة */
+      var settings = null;
+      try { settings = JSON.parse(localStorage.getItem('mosqueScreen.settings.v2')); } catch (e) {}
+
+      var city = null;
+      if (settings) {
+        city = settings.cityId === 'custom'
+          ? { name: settings.customCity.name || 'موقع مخصص', lat: settings.customCity.lat, lng: settings.customCity.lng, tz: settings.customCity.tz }
+          : findCity(settings.cityId);
+      }
+
+      /* عام */
+      var gen = '';
+      gen += row('إصدار التطبيق', APP_VERSION);
+      gen += row('طريقة التشغيل', location.protocol === 'file:' ? 'ملفات محلية' : 'استضافة (' + esc(location.host) + ')');
+      gen += row('إعدادات محفوظة', settings ? 'نعم' : 'لا (الافتراضي)', settings ? 'ok' : 'warn');
+      gen += row('المسجد', settings ? esc(settings.mosqueName) : '—');
+      gen += row('المدينة', city ? esc(city.name) : '—');
+      document.getElementById('c-general').innerHTML = gen;
+
+      /* الوقت */
+      var now = new Date();
+      var deviceTz = '—';
+      try { deviceTz = Intl.DateTimeFormat().resolvedOptions().timeZone; } catch (e) {}
+      var cityTz = (city && city.tz) || deviceTz;
+      function offsetOf(tz) {
+        try {
+          var p = {};
+          new Intl.DateTimeFormat('en-GB', { timeZone: tz, hour12: false, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })
+            .formatToParts(now).forEach(function (x) { if (x.type !== 'literal') p[x.type] = x.value; });
+          return (Date.UTC(+p.year, +p.month - 1, +p.day, p.hour === '24' ? 0 : +p.hour, +p.minute, +p.second) - now.getTime()) / 3600000;
+        } catch (e) { return null; }
+      }
+      var devOff = -now.getTimezoneOffset() / 60;
+      var cityOff = offsetOf(cityTz);
+      var tzMatch = cityOff === null || Math.abs(cityOff - devOff) < 0.02;
+      var tm = '';
+      tm += row('ساعة الجهاز', now.toTimeString().slice(0, 8));
+      tm += row('منطقة الجهاز', esc(deviceTz) + ' (UTC' + (devOff >= 0 ? '+' : '') + devOff + ')');
+      tm += row('منطقة المدينة', esc(cityTz) + (cityOff !== null ? ' (UTC' + (cityOff >= 0 ? '+' : '') + cityOff + ')' : ''));
+      tm += row('التطابق', tzMatch ? '✓ متطابقة' : '✗ مختلفة — الشاشة تعرض توقيت المدينة تلقائياً', tzMatch ? 'ok' : 'warn');
+      document.getElementById('c-time').innerHTML = tm;
+
+      /* مواقيت اليوم */
+      var pt = '';
+      if (city) {
+        try {
+          var offset = cityOff !== null ? cityOff : devOff;
+          var p = {};
+          new Intl.DateTimeFormat('en-GB', { timeZone: cityTz, year: 'numeric', month: '2-digit', day: '2-digit' })
+            .formatToParts(now).forEach(function (x) { if (x.type !== 'literal') p[x.type] = x.value; });
+          var utcBase = Date.UTC(+p.year, +p.month - 1, +p.day) - offset * 3600000;
+          var t = PrayTimes.getTimes(new Date(+p.year, +p.month - 1, +p.day, 12), {
+            lat: city.lat, lng: city.lng,
+            method: settings ? settings.method : 'Egypt',
+            asrFactor: settings ? settings.asrFactor : 1,
+            tz: offset, utcBase: utcBase
+          });
+          var fmt = new Intl.DateTimeFormat('en-GB', { timeZone: cityTz, hour: '2-digit', minute: '2-digit', hour12: false });
+          ['fajr', 'sunrise', 'dhuhr', 'asr', 'maghrib', 'isha'].forEach(function (k2, i) {
+            var names = ['الفجر', 'الشروق', 'الظهر', 'العصر', 'المغرب', 'العشاء'];
+            pt += row(names[i], t[k2] ? fmt.format(t[k2]) : '--:--', t[k2] ? '' : 'bad');
+          });
+        } catch (e) { pt = row('خطأ', esc(e.message), 'bad'); }
+      } else {
+        pt = row('الحالة', 'لا إعدادات — افتح الشاشة أولاً', 'warn');
+      }
+      document.getElementById('c-times').innerHTML = pt;
+
+      /* الاتصال */
+      var net = row('navigator.onLine', navigator.onLine ? 'نعم' : 'لا', navigator.onLine ? 'ok' : 'bad');
+      var lastSync = null;
+      try { lastSync = localStorage.getItem('mosqueScreen.lastSync'); } catch (e) {}
+      net += row('آخر تحديث عن بُعد', lastSync ? new Date(lastSync).toLocaleString('ar') : 'لم يحدث');
+      net += row('التحديث البعيد', settings && settings.remoteEnabled ? 'مفعّل' : 'معطّل');
+      document.getElementById('c-net').innerHTML = net + row('فحص الشبكة', 'جارٍ...', '');
+      var pingP = (location.protocol === 'file:')
+        ? new Promise(function (res) {
+            var img = new Image();
+            img.onload = function () { res(true); };
+            img.onerror = function () { res(false); };
+            img.src = 'https://www.google.com/favicon.ico?_=' + Date.now();
+            setTimeout(function () { res(false); }, 6000);
+          })
+        : fetch('./?ping=' + Date.now(), { method: 'HEAD', cache: 'no-store' })
+            .then(function () { return true; }, function () { return false; });
+      pingP.then(function (ok) {
+        document.getElementById('c-net').innerHTML = net +
+          row('فحص الشبكة الفعلي', ok ? '✓ متصل' : '✗ غير متصل', ok ? 'ok' : 'bad');
+      });
+
+      /* التخزين */
+      var st = '';
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistration().then(function (reg) {
+          st += row('Service Worker', reg ? '✓ مسجّل' : 'غير مسجّل (طبيعي على file://)', reg ? 'ok' : 'warn');
+          return caches.keys().catch(function () { return []; });
+        }).then(function (keys) {
+          st += row('نسخة الكاش', keys && keys.length ? esc(keys.join(', ')) : '—');
+          renderAssets();
+        });
+      } else { renderAssets(); }
+
+      function renderAssets() {
+        var req = indexedDB.open('mosqueScreenAssets', 1);
+        req.onsuccess = function () {
+          var db = req.result;
+          try {
+            var tx = db.transaction('assets', 'readonly');
+            var store = tx.objectStore('assets');
+            var items = [
+              ['mosquePhoto', 'صورة الجامع'],
+              ['adhanAudio', 'ملف أذان مرفوع'],
+              ['backgrounds', 'صور الخلفيات']
+            ];
+            var done = 0;
+            items.forEach(function (it) {
+              var r = store.get(it[0]);
+              r.onsuccess = function () {
+                var v = r.result;
+                var size = v ? (Array.isArray(v)
+                  ? v.length + ' صورة'
+                  : Math.round((v.length || 0) / 1024) + ' KB') : '—';
+                st += row(it[1], size, v ? 'ok' : '');
+                if (++done === items.length) {
+                  document.getElementById('c-storage').innerHTML = st;
+                }
+              };
+            });
+          } catch (e) {
+            document.getElementById('c-storage').innerHTML = st + row('IndexedDB', 'فارغ');
+          }
+        };
+        req.onerror = function () {
+          document.getElementById('c-storage').innerHTML = st + row('IndexedDB', 'غير متاح', 'bad');
+        };
+      }
+
+      /* الصوت */
+      var au = '';
+      au += row('وضع الصوت', settings ? esc(settings.adhanSoundMode) : 'makkah');
+      au += row('الصوت مفعّل', settings === null || settings.adhanSoundEnabled ? 'نعم' : 'لا');
+      document.getElementById('c-audio').innerHTML = au;
+      document.getElementById('btn-audio-test').addEventListener('click', function () {
+        var mode = settings ? settings.adhanSoundMode : 'makkah';
+        var files = { makkah: 'audio/adhan-makkah.mp3', madinah: 'audio/adhan-madinah.mp3', quds: 'audio/adhan-quds.mp3', alhindi: 'audio/adhan-alhindi.mp3' };
+        var a = new Audio(files[mode] || files.makkah);
+        a.play().then(function () {
+          setTimeout(function () { a.pause(); }, 4000);
+          document.getElementById('c-audio').innerHTML = au + row('تجربة التشغيل', '✓ يعمل', 'ok');
+        }).catch(function (e2) {
+          document.getElementById('c-audio').innerHTML = au + row('تجربة التشغيل', '✗ ' + esc(e2.name), 'bad');
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

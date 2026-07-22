@@ -72,6 +72,10 @@
                 <label>خط العرض</label><input type="number" id="m-custom-lat" step="0.0001">
                 <label>خط الطول</label><input type="number" id="m-custom-lng" step="0.0001">
               </div>
+              <div class="form-row">
+                <label>المنطقة الزمنية</label>
+                <input type="text" id="m-custom-tz" dir="ltr" placeholder="مثال: Asia/Jerusalem">
+              </div>
             </div>
             <div class="form-row"><label>طريقة الحساب</label><select id="m-method"></select></div>
             <div class="form-row"><label>مذهب العصر</label>
@@ -215,14 +219,20 @@
       </p>
       <ol class="steps">
         <li>أنشئ حساباً على <span dir="ltr">github.com</span> (إن لم يكن لديك)</li>
-        <li>افتح <span dir="ltr">github.com/settings/tokens</span> ← Generate new token (classic)</li>
-        <li>فعّل صلاحية <b dir="ltr">gist</b> فقط، وانسخ الرمز هنا:</li>
+        <li>افتح <span dir="ltr">github.com/settings/personal-access-tokens</span> ← <b dir="ltr">Fine-grained token</b></li>
+        <li>في Account permissions فعّل <b dir="ltr">Gists: Read and write</b> <u>فقط</u> — لا تعطِ أي صلاحية أخرى، وحدد مدة انتهاء (مثلاً سنة)</li>
+        <li>انسخ الرمز هنا:</li>
       </ol>
-      <div class="form-row"><label>رمز الوصول (Token)</label><input type="password" id="gist-token" dir="ltr" placeholder="ghp_..."></div>
+      <div class="form-row"><label>رمز الوصول (Token)</label><input type="password" id="gist-token" dir="ltr" placeholder="github_pat_..."></div>
+      <div class="form-row">
+        <label>تذكّر الرمز على هذا الجهاز</label>
+        <input type="checkbox" id="gist-remember">
+      </div>
       <div class="form-row"><label>معرّف Gist (يُنشأ تلقائياً)</label><input type="text" id="gist-id" dir="ltr" placeholder="يُملأ تلقائياً عند أول نشر"></div>
-      <p class="modal-note">⚠ الرمز يُحفظ على هذا الجهاز فقط. بعد أول «نشر الكل» انسخ رابط كل شاشة (زر 📋) وضعه مرة واحدة في إعدادات الشاشة نفسها ← «التحديث عن بُعد» — وبعدها كل تعديل تنشره يصلها تلقائياً.</p>
+      <p class="modal-note">🔒 الأمان: الرمز يبقى على هذا الجهاز فقط ولا يُرفع لأي مكان. إذا ألغيت «تذكّر الرمز» يُمسح عند إغلاق المتصفح (أأمن — مناسب لجهاز مشترك). استخدم دائماً رمزاً بصلاحية Gists فقط حتى لو تسرب لا يضر حسابك.<br>بعد أول «نشر الكل» انسخ رابط كل شاشة (زر 📋) وضعه مرة واحدة في إعدادات الشاشة ← «التحديث عن بُعد».</p>
       <div class="modal-buttons">
         <button id="btn-gist-save" class="btn primary">حفظ</button>
+        <button id="btn-gist-clear" class="btn danger">🗑 مسح الرمز</button>
         <button id="btn-gist-cancel" class="btn ghost">إغلاق</button>
       </div>
     </div>

@@ -37,8 +37,73 @@
   /* ---------- أدوات وقت ---------- */
   function pad(n) { return (n < 10 ? '0' : '') + n; }
 
-  function formatClock(date, withSeconds) {
-    var h = date.getHours(), m = date.getMinutes(), s = date.getSeconds();
+  /* ============================================================
+     كل العرض يتم بتوقيت مدينة المسجد (وليس توقيت الجهاز) —
+     حتى لو كانت المنطقة الزمنية للجهاز مضبوطة خطأً تبقى
+     الأوقات والعدادات صحيحة تماماً
+     ============================================================ */
+  var tzFormatterCache = {};
+  var WEEKDAYS_EN = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+
+  function deviceTimeZone() {
+    try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch (e) { return null; }
+  }
+
+  function cityTimeZone() {
+    var loc = currentLocation();
+    return loc.tz || deviceTimeZone();
+  }
+
+  function tzFormatter(tz) {
+    if (!tz) return null;
+    if (!(tz in tzFormatterCache)) {
+      try {
+        tzFormatterCache[tz] = new Intl.DateTimeFormat('en-GB', {
+          timeZone: tz, hour12: false, weekday: 'short',
+          year: 'numeric', month: '2-digit', day: '2-digit',
+          hour: '2-digit', minute: '2-digit', second: '2-digit'
+        });
+      } catch (e) { tzFormatterCache[tz] = null; }
+    }
+    return tzFormatterCache[tz];
+  }
+
+  /* مكوّنات الوقت الحائطي للمدينة للحظة معيّنة */
+  function cityParts(instant) {
+    var fmt = tzFormatter(cityTimeZone());
+    if (!fmt) {
+      return {
+        y: instant.getFullYear(), m: instant.getMonth() + 1, d: instant.getDate(),
+        hh: instant.getHours(), mm: instant.getMinutes(), ss: instant.getSeconds(),
+        weekday: instant.getDay()
+      };
+    }
+    var p = {};
+    fmt.formatToParts(instant).forEach(function (x) {
+      if (x.type !== 'literal') p[x.type] = x.value;
+    });
+    return {
+      y: +p.year, m: +p.month, d: +p.day,
+      hh: p.hour === '24' ? 0 : +p.hour, mm: +p.minute, ss: +p.second,
+      weekday: WEEKDAYS_EN[p.weekday]
+    };
+  }
+
+  /* إزاحة منطقة زمنية عن UTC بالساعات للحظة معيّنة */
+  function tzOffsetHours(instant, tz) {
+    var fmt = tzFormatter(tz);
+    if (!fmt) return -instant.getTimezoneOffset() / 60;
+    var p = {};
+    fmt.formatToParts(instant).forEach(function (x) {
+      if (x.type !== 'literal') p[x.type] = x.value;
+    });
+    var asUTC = Date.UTC(+p.year, +p.month - 1, +p.day,
+      p.hour === '24' ? 0 : +p.hour, +p.minute, +p.second);
+    return (asUTC - instant.getTime()) / 3600000;
+  }
+
+  function formatClockParts(cp, withSeconds) {
+    var h = cp.hh, m = cp.mm, s = cp.ss;
     var suffix = '';
     if (settings.timeFormat === 12) {
       suffix = h < 12 ? 'ص' : 'م';
@@ -50,7 +115,8 @@
 
   function formatTimeShort(date) {
     if (!date) return '--:--';
-    var h = date.getHours(), m = date.getMinutes();
+    var cp = cityParts(date);
+    var h = cp.hh, m = cp.mm;
     if (settings.timeFormat === 12) {
       h = h % 12; if (h === 0) h = 12;
       return h + ':' + pad(m);
@@ -68,14 +134,13 @@
     return pad(m) + ':' + pad(s);
   }
 
-  /* ---------- التاريخ الهجري ---------- */
-  function hijriString(date) {
-    var d = new Date(date.getTime());
-    d.setDate(d.getDate() + settings.hijriAdjust);
+  /* ---------- التاريخ الهجري (بتوقيت المدينة) ---------- */
+  function hijriString(instant) {
+    var adjusted = new Date(instant.getTime() + settings.hijriAdjust * 86400000);
     try {
       var fmt = new Intl.DateTimeFormat('ar-u-ca-islamic-umalqura-nu-latn',
-        { day: 'numeric', month: 'long', year: 'numeric' });
-      var parts = fmt.formatToParts(d);
+        { timeZone: cityTimeZone() || undefined, day: 'numeric', month: 'long', year: 'numeric' });
+      var parts = fmt.formatToParts(adjusted);
       var day = '', month = '', year = '';
       parts.forEach(function (p) {
         if (p.type === 'day') day = p.value;
@@ -84,7 +149,8 @@
       });
       if (day && month && year) return day + ' ' + month + ' ' + year + ' هـ';
     } catch (e) { /* متصفح قديم → الحساب الجدولي */ }
-    var h = gregToHijriTabular(d.getFullYear(), d.getMonth() + 1, d.getDate());
+    var cp = cityParts(adjusted);
+    var h = gregToHijriTabular(cp.y, cp.m, cp.d);
     return h.d + ' ' + HIJRI_MONTHS[h.m - 1] + ' ' + h.y + ' هـ';
   }
 
@@ -106,38 +172,38 @@
     return { y: yy, m: mm, d: dd };
   }
 
-  function gregorianString(date) {
+  function gregorianString(cp) {
     var months = settings.monthNames === 'western' ? MONTHS_WESTERN : MONTHS_LEVANT;
-    return date.getDate() + ' ' + months[date.getMonth()] + ' ' + date.getFullYear() + ' م';
+    return cp.d + ' ' + months[cp.m - 1] + ' ' + cp.y + ' م';
   }
 
-  /* التاريخ الهجري كأرقام (مع التعديل اليدوي) */
-  function hijriParts(date) {
-    var d = new Date(date.getTime());
-    d.setDate(d.getDate() + settings.hijriAdjust);
+  /* التاريخ الهجري كأرقام (مع التعديل اليدوي، بتوقيت المدينة) */
+  function hijriParts(instant) {
+    var adjusted = new Date(instant.getTime() + settings.hijriAdjust * 86400000);
     try {
       var fmt = new Intl.DateTimeFormat('en-u-ca-islamic-umalqura-nu-latn',
-        { day: 'numeric', month: 'numeric', year: 'numeric' });
+        { timeZone: cityTimeZone() || undefined, day: 'numeric', month: 'numeric', year: 'numeric' });
       var day = 0, mon = 0, yr = 0;
-      fmt.formatToParts(d).forEach(function (p) {
+      fmt.formatToParts(adjusted).forEach(function (p) {
         if (p.type === 'day') day = parseInt(p.value, 10);
         if (p.type === 'month') mon = parseInt(p.value, 10);
         if (p.type === 'year') yr = parseInt(p.value, 10);
       });
       if (day && mon && yr) return { d: day, m: mon, y: yr };
     } catch (e) {}
-    return gregToHijriTabular(d.getFullYear(), d.getMonth() + 1, d.getDate());
+    var cp = cityParts(adjusted);
+    return gregToHijriTabular(cp.y, cp.m, cp.d);
   }
 
   /* اليوم الهجري الشرعي يبدأ من المغرب — بعد المغرب نتقدم يوماً */
   function effectiveHijri(now) {
-    var base = new Date(now.getTime());
+    var base = now;
     var maghrib = null;
     for (var i = 0; i < prayers.length; i++) {
       if (prayers[i].key === 'maghrib') maghrib = prayers[i].adhan;
     }
     if (maghrib && now.getTime() >= maghrib.getTime()) {
-      base.setDate(base.getDate() + 1);
+      base = new Date(now.getTime() + 86400000);
     }
     return hijriParts(base);
   }
@@ -179,7 +245,7 @@
     for (var j = 0; j < prayers.length; j++) {
       if (prayers[j].key === 'maghrib' && now.getTime() >= prayers[j].adhan.getTime()) afterMaghrib = true;
     }
-    var weekday = afterMaghrib ? (now.getDay() + 1) % 7 : now.getDay();
+    var weekday = (cityParts(now).weekday + (afterMaghrib ? 1 : 0)) % 7;
     if (weekday === 5) {
       events.push(afterMaghrib
         ? 'ليلة الجمعة — أكثروا من الصلاة على النبي ﷺ'
@@ -216,17 +282,33 @@
     bar.style.display = 'flex';
   }
 
-  /* ---------- حساب صلوات اليوم ---------- */
+  /* ---------- حساب صلوات اليوم (بتوقيت المدينة) ---------- */
   function computeDay() {
     var now = new Date();
     var loc = currentLocation();
-    var opts = { lat: loc.lat, lng: loc.lng, method: settings.method, asrFactor: settings.asrFactor };
+    var tz = cityTimeZone();
+    var cp = cityParts(now);
 
-    var t = PrayTimes.getTimes(now, opts);
-    var tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 12);
-    tomorrowFajr = PrayTimes.getTimes(tomorrow, opts).fajr;
+    /* إزاحة المدينة عن UTC لهذا اليوم (تُحتسب عند الظهر لتفادي لحظة تبديل الساعة) */
+    var offset = tzOffsetHours(new Date(Date.UTC(cp.y, cp.m - 1, cp.d, 12, 0, 0)), tz);
+    var utcBase = Date.UTC(cp.y, cp.m - 1, cp.d, 0, 0, 0) - offset * 3600000;
+    var opts = {
+      lat: loc.lat, lng: loc.lng, method: settings.method, asrFactor: settings.asrFactor,
+      tz: offset, utcBase: utcBase
+    };
+    /* كائن تاريخ تُقرأ منه السنة/الشهر/اليوم فقط داخل المحرك */
+    var t = PrayTimes.getTimes(new Date(cp.y, cp.m - 1, cp.d, 12), opts);
 
-    var isFriday = now.getDay() === 5;
+    /* فجر الغد بتوقيت المدينة */
+    var cpT = cityParts(new Date(utcBase + 36 * 3600000));
+    var offsetT = tzOffsetHours(new Date(Date.UTC(cpT.y, cpT.m - 1, cpT.d, 12, 0, 0)), tz);
+    var optsT = {
+      lat: loc.lat, lng: loc.lng, method: settings.method, asrFactor: settings.asrFactor,
+      tz: offsetT, utcBase: Date.UTC(cpT.y, cpT.m - 1, cpT.d, 0, 0, 0) - offsetT * 3600000
+    };
+    tomorrowFajr = PrayTimes.getTimes(new Date(cpT.y, cpT.m - 1, cpT.d, 12), optsT).fajr;
+
+    var isFriday = cp.weekday === 5;
     prayers = [];
 
     prayers.push(makePrayer('fajr', t.fajr, settings.iqama.fajr));
@@ -239,8 +321,12 @@
       var jumuaAdhan = t.dhuhr;
       if (settings.jumuaMode === 'fixed') {
         var hm = settings.jumuaTime.split(':');
-        jumuaAdhan = new Date(now.getFullYear(), now.getMonth(), now.getDate(),
-          parseInt(hm[0], 10) || 12, parseInt(hm[1], 10) || 30);
+        /* isNaN وليس || — حتى لا تتحول "12:00" إلى "12:30" (الصفر falsy) */
+        var jH = parseInt(hm[0], 10);
+        var jM = parseInt(hm[1], 10);
+        if (isNaN(jH)) jH = 12;
+        if (isNaN(jM)) jM = 30;
+        jumuaAdhan = new Date(utcBase + (jH * 60 + jM) * 60000);
       }
       var jumua = makePrayer('jumua', jumuaAdhan, settings.khutbahMin);
       jumua.isJumua = true;
@@ -253,11 +339,12 @@
     prayers.push(makePrayer('maghrib', t.maghrib, settings.iqama.maghrib));
     prayers.push(makePrayer('isha', t.isha, settings.iqama.isha));
 
-    todayKey = now.getFullYear() + '-' + now.getMonth() + '-' + now.getDate() + '|computed';
+    todayKey = cp.y + '-' + cp.m + '-' + cp.d + '|computed';
 
     buildPrayerCards();
     renderDates(now);
     renderRamadanBar(now);
+    updateTzWarning();
   }
 
   function makePrayer(key, adhan, iqamaOffsetMin) {
@@ -295,11 +382,22 @@
   }
 
   function renderDates(now) {
-    document.getElementById('day-name').textContent = DAYS[now.getDay()];
+    var cp = cityParts(now);
+    document.getElementById('day-name').textContent = DAYS[cp.weekday];
     document.getElementById('hijri-date').textContent = hijriString(now);
-    document.getElementById('greg-date').textContent = gregorianString(now);
+    document.getElementById('greg-date').textContent = gregorianString(cp);
     document.getElementById('mosque-name').textContent = settings.mosqueName;
     document.getElementById('city-name').textContent = currentLocation().name;
+  }
+
+  /* تحذير عدم تطابق المنطقة الزمنية للجهاز مع مدينة المسجد */
+  function updateTzWarning() {
+    var el = document.getElementById('tz-warning');
+    if (!el) return;
+    var now = new Date();
+    var cityOffset = tzOffsetHours(now, cityTimeZone());
+    var deviceOffset = -now.getTimezoneOffset() / 60;
+    el.style.display = Math.abs(cityOffset - deviceOffset) > 0.02 ? '' : 'none';
   }
 
   /* ---------- تحديد الحالة الحالية ---------- */
@@ -353,14 +451,18 @@
   var lastMinuteKey = '';
   var lastDynamicSig = '';
 
+  var reloadedDay = '';
+
   function tick() {
     var now = new Date();
+    var cp = cityParts(now);
 
-    var dayCheck = now.getFullYear() + '-' + now.getMonth() + '-' + now.getDate();
-    if (todayKey.indexOf(dayCheck) !== 0) computeDay();
+    var dayCheck = cp.y + '-' + cp.m + '-' + cp.d;
+    /* مساواة تامة وليس بادئة — حتى يُكتشف رجوع ساعة الجهاز (22→2) */
+    if (todayKey !== dayCheck + '|computed') computeDay();
 
     /* مرة كل دقيقة: تحديث المناسبات ووضع رمضان (يتغيران عند المغرب) */
-    var minuteKey = dayCheck + ' ' + now.getHours() + ':' + now.getMinutes();
+    var minuteKey = dayCheck + ' ' + cp.hh + ':' + cp.mm;
     if (minuteKey !== lastMinuteKey) {
       lastMinuteKey = minuteKey;
       var sig = JSON.stringify(hijriEventsFor(now)) + '|' + isRamadan(now);
@@ -370,9 +472,16 @@
         buildPrayerCards();
         startTicker();
       }
+      /* إعادة تحميل يومية آمنة (00:20 بتوقيت المدينة) لتجديد الذاكرة والنسخة */
+      if (cp.hh === 0 && cp.mm === 20 && reloadedDay !== dayCheck) {
+        reloadedDay = dayCheck;
+        if (currentEvent(now).state === 'normal') {
+          try { location.reload(); } catch (e) {}
+        }
+      }
     }
 
-    var clk = formatClock(now, settings.showSeconds);
+    var clk = formatClockParts(cp, settings.showSeconds);
     document.getElementById('clock-main').textContent = clk.main;
     document.getElementById('clock-seconds').textContent = clk.seconds;
     document.getElementById('clock-suffix').textContent = clk.suffix;
@@ -380,7 +489,7 @@
     var ev = currentEvent(now);
     applyState(ev, now);
     updateCards(ev, now);
-    manageAnnScreen(ev, now);
+    manageAnnScreen(ev, now, cp);
   }
 
   function show(id, visible) {
@@ -474,7 +583,7 @@
   var annIndex = 0;
   var annTimesShown = {};   /* {'HH:MM': 'yyyy-m-d'} حتى لا يتكرر نفس الوقت */
 
-  function manageAnnScreen(ev, now) {
+  function manageAnnScreen(ev, now, cp) {
     var t = now.getTime();
 
     /* لا تظهر أبداً فوق شاشات الصلاة */
@@ -501,9 +610,9 @@
       due = true;
     }
 
-    /* جدولة بأوقات محددة من المدير */
-    var hhmm = pad(now.getHours()) + ':' + pad(now.getMinutes());
-    var dayStr = now.getFullYear() + '-' + now.getMonth() + '-' + now.getDate();
+    /* جدولة بأوقات محددة من المدير (بتوقيت المدينة) */
+    var hhmm = pad(cp.hh) + ':' + pad(cp.mm);
+    var dayStr = cp.y + '-' + cp.m + '-' + cp.d;
     if (settings.annScreenTimes.indexOf(hhmm) > -1 && annTimesShown[hhmm] !== dayStr) {
       annTimesShown[hhmm] = dayStr;
       due = true;
@@ -714,6 +823,12 @@
     if (ctx && ctx.state === 'suspended') ctx.resume();
     var el = getActiveAdhanElement();
     if (el) {
+      /* إن كان الأذان يُبث الآن فهو مفعّل أصلاً — لا نقاطعه أبداً */
+      if (!el.paused) {
+        audioUnlocked = true;
+        updateSoundIndicator();
+        return;
+      }
       el.muted = true;
       var p = el.play();
       if (p && p.then) {
@@ -847,9 +962,18 @@
 
   window.onAssetsChanged = loadAssets;
 
-  /* ---------- حالة الاتصال ---------- */
+  /* ---------- حالة الاتصال ----------
+     عند الاستضافة: نفحص موقعنا نفسه (طلب HEAD يتجاوز كاش الـSW) —
+     أدق من فحص خدمة خارجية قد تكون محجوبة في بعض الشبكات */
   function checkOnline() {
     if (!navigator.onLine) { setOnline(false); return; }
+    if (location.protocol === 'http:' || location.protocol === 'https:') {
+      fetch('./?ping=' + Date.now(), { method: 'HEAD', cache: 'no-store' })
+        .then(function () { setOnline(true); })
+        .catch(function () { setOnline(false); });
+      return;
+    }
+    /* تشغيل من ملف محلي — فحص بصورة خارجية */
     var img = new Image();
     var done = false;
     var timer = setTimeout(function () {
@@ -871,24 +995,29 @@
     el.querySelector('span').textContent = v ? 'متصل' : 'غير متصل';
   }
 
-  /* ---------- التحديث عن بُعد ---------- */
+  /* ---------- التحديث عن بُعد ----------
+     لا نمنعه بناء على مؤشر الاتصال — نحاول دائماً ونفشل بصمت،
+     وكل القيم الواردة تمر بتنقية صارمة قبل تطبيقها */
   function remoteSync() {
-    if (!settings.remoteEnabled || !settings.remoteUrl || !isOnline) return;
+    if (!settings.remoteEnabled || !settings.remoteUrl) return;
     fetch(settings.remoteUrl + (settings.remoteUrl.indexOf('?') > -1 ? '&' : '?') + '_=' + Date.now(),
       { cache: 'no-store' })
       .then(function (r) { return r.json(); })
       .then(function (incoming) {
         if (!incoming || typeof incoming !== 'object') return;
+        setOnline(true); /* نجاح الجلب دليل اتصال فعلي */
+        var clean = sanitizeSettings(incoming);
         /* لا يُسمح للتحديث البعيد بتغيير رابط التحديث نفسه */
-        delete incoming.remoteUrl;
-        delete incoming.remoteEnabled;
+        delete clean.remoteUrl;
+        delete clean.remoteEnabled;
         var before = JSON.stringify(settings);
-        settings = mergeSettings(settings, incoming);
+        settings = mergeSettings(settings, clean);
         if (JSON.stringify(settings) !== before) {
           saveSettings();
           onSettingsChanged();
         }
         lastRemoteSync = new Date();
+        try { localStorage.setItem('mosqueScreen.lastSync', lastRemoteSync.toISOString()); } catch (e) {}
         var el = document.getElementById('remote-sync-status');
         if (el) el.textContent = 'آخر تحديث عن بُعد: ' + formatTimeShort(lastRemoteSync);
       })
@@ -1048,6 +1177,25 @@
     if (!('serviceWorker' in navigator)) return;
     if (location.protocol !== 'https:' && location.hostname !== 'localhost' &&
         location.hostname !== '127.0.0.1') return;
+
+    /* عند تفعيل نسخة جديدة: إعادة تحميل آمنة بعيداً عن أوقات الصلاة
+       حتى تعمل الشاشة فعلياً بالكود الجديد وليس القديم */
+    var hadController = !!navigator.serviceWorker.controller;
+    var refreshing = false;
+    function safeReload() {
+      if (refreshing) return;
+      if (currentEvent(new Date()).state === 'normal') {
+        refreshing = true;
+        location.reload();
+      } else {
+        setTimeout(safeReload, 5 * 60000);
+      }
+    }
+    navigator.serviceWorker.addEventListener('controllerchange', function () {
+      if (!hadController) { hadController = true; return; } /* أول تثبيت — لا حاجة */
+      safeReload();
+    });
+
     navigator.serviceWorker.register('sw.js').then(function (reg) {
       /* فحص التحديثات كل ساعة — الشاشة تجدد نفسها من الاستضافة */
       setInterval(function () { reg.update().catch(function () {}); }, 3600000);
@@ -1084,12 +1232,15 @@
     }, 5000);
   }
 
-  /* ---------- معاينة حية من لوحة الإدارة ---------- */
+  /* ---------- معاينة حية من لوحة الإدارة ----------
+     نقبل الرسائل فقط من نفس الأصل ومن النافذة الأم (لوحة الإدارة) */
   window.addEventListener('message', function (e) {
+    if (e.origin !== location.origin) return;
+    if (e.source !== window.parent) return;
     var d = e.data;
-    if (d && d.type === 'previewSettings' && d.settings) {
-      /* تطبيق مؤقت للمعاينة فقط — لا يُحفظ على الجهاز */
-      settings = mergeSettings(deepClone(DEFAULT_SETTINGS), d.settings);
+    if (d && d.type === 'previewSettings' && d.settings && typeof d.settings === 'object') {
+      /* تطبيق مؤقت للمعاينة فقط — لا يُحفظ على الجهاز، مع تنقية القيم */
+      settings = mergeSettings(deepClone(DEFAULT_SETTINGS), sanitizeSettings(d.settings));
       onSettingsChanged();
     }
   });
