@@ -546,6 +546,13 @@
       if (dirty) { e.preventDefault(); e.returnValue = ''; }
     });
 
+    /* تسجيل الـSW — اللوحة تعمل كتطبيق مستقل بدون إنترنت عند الاستضافة */
+    if ('serviceWorker' in navigator &&
+        (location.protocol === 'https:' || location.hostname === 'localhost' ||
+         location.hostname === '127.0.0.1')) {
+      navigator.serviceWorker.register('sw.js').catch(function () {});
+    }
+
     /* البداية */
     if (admin.mosques.length) select(admin.mosques[0].id);
     else renderList();

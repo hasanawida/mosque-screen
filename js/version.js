@@ -1,2 +1,2 @@
 /* إصدار التطبيق — يُحدَّث مع كل إصدار جديد (مع تحديث VERSION في sw.js) */
-var APP_VERSION = '1.0.2';
+var APP_VERSION = '1.0.3';

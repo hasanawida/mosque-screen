@@ -2,7 +2,7 @@
    Service Worker — يجعل الشاشة تعمل بدون إنترنت وتتحدث تلقائياً
    عند رفع نسخة جديدة على الاستضافة (غيّر رقم النسخة مع كل تحديث)
    ============================================================ */
-var VERSION = 'mosque-screen-v5';
+var VERSION = 'mosque-screen-v6';
 
 var CORE = [
   './',
@@ -11,6 +11,7 @@ var CORE = [
   './diagnostics.html',
   './js/version.js',
   './manifest.json',
+  './admin.webmanifest',
   './css/style.css',
   './css/admin.css',
   './js/praytimes.js',

@@ -394,3 +394,60 @@ textarea {
   .sidebar { width: 220px; }
   .save-bar { right: 220px; }
 }
+
+/* ---------- الهاتف (تطبيق الإدارة المحمول) ---------- */
+@media (max-width: 700px) {
+  body { overflow: auto; }
+
+  .topbar {
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 12px 14px;
+  }
+  .brand h1 { font-size: 17px; }
+  .topbar-actions { width: 100%; justify-content: flex-end; }
+
+  .layout { flex-direction: column; }
+
+  /* قائمة الجوامع تصبح شريط بطاقات أفقياً */
+  .sidebar {
+    width: 100%;
+    border-inline-start: none;
+    border-bottom: 1px solid var(--card-border);
+    flex-shrink: 0;
+  }
+  .sidebar-head { padding: 10px 14px; }
+  .mosque-list {
+    display: flex;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 8px 10px;
+    gap: 8px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .mosque-item {
+    min-width: 160px;
+    flex-shrink: 0;
+    margin-bottom: 0;
+  }
+  .sidebar-foot { padding: 6px 14px; font-size: 11px; }
+
+  .editor { padding: 14px 14px 100px; }
+  .editor-head { flex-direction: column; align-items: stretch; gap: 10px; }
+  .mosque-title-input { font-size: 20px; min-width: 0; }
+  .editor-actions { justify-content: flex-start; }
+  .editor-actions .btn { font-size: 12.5px; padding: 8px 12px; }
+
+  .iqama-grid { grid-template-columns: repeat(5, 1fr); gap: 5px; }
+  .iqama-grid label { font-size: 11px; }
+  .colors-grid { grid-template-columns: repeat(2, 1fr); }
+
+  .save-bar {
+    right: 0;
+    padding: 10px 14px;
+  }
+  .save-bar .btn.big { flex: 1; }
+
+  .modal-panel { padding: 18px; max-height: 90vh; overflow-y: auto; }
+  .preview-panel { width: 100vw; height: 100vh; border-radius: 0; }
+}

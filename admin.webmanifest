@@ -1,0 +1,27 @@
+{
+  "name": "إدارة شاشات المساجد",
+  "short_name": "إدارة المساجد",
+  "description": "لوحة إدارة شاشات مواقيت الصلاة — تطوير حسن عويضة",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "./admin.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#071c15",
+  "theme_color": "#0a2b20",
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
