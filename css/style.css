@@ -982,42 +982,70 @@ body.layout-portrait .mosque-block,
 body.layout-portrait .header-side { min-width: 0; }
 body.layout-portrait .mosque-block { justify-content: center; }
 body.layout-portrait .header-side { justify-content: center; }
-body.layout-portrait .status-chips { flex-direction: row; }
+body.layout-portrait .status-chips { flex-direction: row; flex-wrap: wrap; justify-content: center; }
+body.layout-portrait .status-chip { font-size: 2.2vmin; }
+body.layout-portrait #mosque-name { font-size: 4.6vmin; }
+body.layout-portrait #city-name { font-size: 2.8vmin; }
+body.layout-portrait #mosque-photo { width: 13vmin; height: 13vmin; }
+body.layout-portrait .mosque-icon { width: 9.5vmin; height: 9.5vmin; }
+body.layout-portrait #day-name { font-size: 4.8vmin; }
+body.layout-portrait .dates-line { font-size: 3.2vmin; }
 
 body.layout-portrait #ramadan-bar {
   flex-wrap: wrap;
   gap: 1.4vmin;
-  font-size: 2.6vmin;
+  font-size: 3.4vmin;
 }
+body.layout-portrait .rb-greeting { font-size: 3.8vmin; }
 
-body.layout-portrait #clock-main { font-size: 23vmin; }
-body.layout-portrait #clock-seconds { font-size: 7vmin; }
+body.layout-portrait #clock-main { font-size: 27vmin; }
+body.layout-portrait #clock-seconds { font-size: 8.5vmin; }
+body.layout-portrait #clock-suffix { font-size: 4.5vmin; }
 
 body.layout-portrait .countdown-wrap {
   flex-direction: column;
   gap: 0.4vmin;
-  padding: 1.8vmin 6vmin;
-  border-radius: 3.5vmin;
+  padding: 2vmin 7vmin;
+  border-radius: 4vmin;
   text-align: center;
 }
-body.layout-portrait #countdown-label { font-size: 3.2vmin; }
-body.layout-portrait #countdown-value { font-size: 5.6vmin; }
+body.layout-portrait #countdown-label { font-size: 4.2vmin; }
+body.layout-portrait #countdown-value { font-size: 7.5vmin; }
 
 body.layout-portrait #prayers-row {
   flex-direction: column;
-  gap: 1.2vmin;
+  gap: 1.3vmin;
 }
 body.layout-portrait .prayer-card {
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  padding: 1.5vmin 3.4vmin;
+  padding: 1.8vmin 3.6vmin;
   gap: 1.6vmin;
 }
-body.layout-portrait .card-name { font-size: 3.4vmin; min-width: 14vmin; }
-body.layout-portrait .card-time { font-size: 5vmin; }
-body.layout-portrait .card-iqama { margin-top: 0; font-size: 2.2vmin; }
-body.layout-portrait .card-note { margin-top: 0; font-size: 2vmin; }
+body.layout-portrait .card-name { font-size: 4.8vmin; min-width: 17vmin; }
+body.layout-portrait .card-time { font-size: 6.8vmin; }
+body.layout-portrait .card-iqama { margin-top: 0; font-size: 3vmin; padding: 0.5vmin 2vmin; }
+body.layout-portrait .card-note { margin-top: 0; font-size: 2.8vmin; }
 body.layout-portrait .prayer-card.next { transform: none; }
 
-body.layout-portrait #ticker-text { font-size: 2.8vmin; }
+body.layout-portrait #ticker-text { font-size: 3.8vmin; }
+body.layout-portrait .ticker-badge { font-size: 2.8vmin; }
+body.layout-portrait .dev-credit { font-size: 2.4vmin; }
+
+/* الشاشات الكاملة (أذان/إقامة/أذكار/إعلانات) بالوضع العمودي */
+body.layout-portrait .overlay-kalima { font-size: 9vmin; }
+body.layout-portrait .overlay-title { font-size: 6vmin; }
+body.layout-portrait .overlay-sub { font-size: 4vmin; }
+body.layout-portrait #adhan-time { font-size: 8vmin; }
+body.layout-portrait .adhkar-header { font-size: 4.6vmin; }
+body.layout-portrait .adhkar-text { font-size: 6.5vmin; max-width: 90vw; }
+body.layout-portrait .rep-live { font-size: 8.5vmin; }
+body.layout-portrait .rep-total { font-size: 6vmin; }
+body.layout-portrait .rep-label { font-size: 3.5vmin; }
+body.layout-portrait .ann-badge { font-size: 4vmin; }
+body.layout-portrait .ann-text { font-size: 7.5vmin; max-width: 90vw; }
+body.layout-portrait #iqama-soon-label { font-size: 6.5vmin; }
+body.layout-portrait #iqama-soon-value { font-size: 28vmin; }
+body.layout-portrait .phone-warning { font-size: 4.2vmin; }
+body.layout-portrait .phone-warning svg { width: 5.5vmin; height: 5.5vmin; }
