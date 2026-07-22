@@ -2,7 +2,7 @@
    Service Worker — يجعل الشاشة تعمل بدون إنترنت وتتحدث تلقائياً
    عند رفع نسخة جديدة على الاستضافة (غيّر رقم النسخة مع كل تحديث)
    ============================================================ */
-var VERSION = 'mosque-screen-v3';
+var VERSION = 'mosque-screen-v4';
 
 var CORE = [
   './',
@@ -64,11 +64,11 @@ self.addEventListener('fetch', function (e) {
                 url.pathname.indexOf('/fonts/') > -1;
 
   if (isMedia) {
-    /* الوسائط: من الكاش أولاً (لا تتغير) */
+    /* الوسائط: من الكاش أولاً (لا تتغير) — لا نخزن الاستجابات الجزئية 206 */
     e.respondWith(
       caches.match(req, { ignoreSearch: true }).then(function (hit) {
         return hit || fetch(req).then(function (resp) {
-          if (resp.ok) {
+          if (resp.ok && resp.status === 200) {
             var copy = resp.clone();
             caches.open(VERSION).then(function (c) { c.put(req, copy); });
           }
@@ -77,14 +77,20 @@ self.addEventListener('fetch', function (e) {
       })
     );
   } else {
-    /* الكود والواجهة: الشبكة أولاً حتى تصل التحديثات، والكاش عند الانقطاع */
+    /* الكود والواجهة: الشبكة أولاً حتى تصل التحديثات — وأي خطأ HTTP
+       (404/5xx أثناء إعادة نشر الاستضافة) يرجع للكاش السليم بدل شاشة ميتة */
     e.respondWith(
       fetch(req).then(function (resp) {
         if (resp.ok) {
-          var copy = resp.clone();
-          caches.open(VERSION).then(function (c) { c.put(req, copy); });
+          if (resp.status === 200) {
+            var copy = resp.clone();
+            caches.open(VERSION).then(function (c) { c.put(req, copy); });
+          }
+          return resp;
         }
-        return resp;
+        return caches.match(req, { ignoreSearch: true }).then(function (hit) {
+          return hit || resp;
+        });
       }).catch(function () {
         return caches.match(req, { ignoreSearch: true }).then(function (hit) {
           return hit || caches.match('./index.html');

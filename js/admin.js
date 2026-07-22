@@ -97,7 +97,16 @@
   function load() {
     try {
       var raw = localStorage.getItem(ADMIN_KEY);
-      if (raw) return JSON.parse(raw);
+      if (raw) {
+        var data = JSON.parse(raw);
+        /* ترحيل الرمز القديم من التخزين العام إلى موضعه المنفصل */
+        if (data.gist && data.gist.token) {
+          try { localStorage.setItem(TOKEN_KEY, data.gist.token); } catch (e2) {}
+          data.gist.token = '';
+          try { localStorage.setItem(ADMIN_KEY, JSON.stringify(data)); } catch (e2) {}
+        }
+        return data;
+      }
     } catch (e) {}
     return { mosques: [], gist: { token: '', gistId: '', owner: '' } };
   }
@@ -230,7 +239,15 @@
     s.customCity.name = g('m-custom-name').value.trim();
     s.customCity.lat = parseFloat(g('m-custom-lat').value) || 0;
     s.customCity.lng = parseFloat(g('m-custom-lng').value) || 0;
-    s.customCity.tz = g('m-custom-tz').value.trim();
+    var tzv = g('m-custom-tz').value.trim();
+    if (tzv) {
+      try { new Intl.DateTimeFormat('en', { timeZone: tzv }); }
+      catch (e) {
+        alert('المنطقة الزمنية «' + tzv + '» غير صحيحة — استخدم صيغة مثل Asia/Jerusalem. سيتم تجاهلها والاعتماد على منطقة الجهاز.');
+        tzv = '';
+      }
+    }
+    s.customCity.tz = tzv;
     s.method = g('m-method').value;
     s.asrFactor = parseInt(g('m-asr').value, 10);
     s.hijriAdjust = parseInt(g('m-hijri').value, 10);
@@ -322,12 +339,22 @@
     status.textContent = '⏳ جارٍ النشر...';
     var files = {};
     admin.mosques.forEach(function (m) {
+      var pub = clone(m.settings);
+      /* لا نفرض فاصل المزامنة عن بُعد — يبقى بيد كل شاشة */
+      delete pub.remoteIntervalMin;
       files['mosque-' + m.id + '.json'] = {
-        content: JSON.stringify(m.settings, null, 2)
+        content: JSON.stringify(pub, null, 2)
       };
     });
 
     var isNew = !admin.gist.gistId;
+
+    /* حذف ملفات الجوامع المحذوفة من الـGist حتى لا تبقى شاشاتها تتزامن للأبد */
+    if (!isNew) {
+      (admin.publishedFiles || []).forEach(function (fn) {
+        if (!(fn in files)) files[fn] = null;
+      });
+    }
     var url = isNew ? 'https://api.github.com/gists'
       : 'https://api.github.com/gists/' + admin.gist.gistId;
 
@@ -349,6 +376,9 @@
     }).then(function (resp) {
       admin.gist.gistId = resp.id;
       admin.gist.owner = resp.owner ? resp.owner.login : admin.gist.owner;
+      admin.publishedFiles = Object.keys(files).filter(function (fn) {
+        return files[fn] !== null;
+      });
       var now = new Date();
       var stamp = pad(now.getHours()) + ':' + pad(now.getMinutes()) +
         ' ' + now.getDate() + '/' + (now.getMonth() + 1);

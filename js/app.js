@@ -134,9 +134,17 @@
     return pad(m) + ':' + pad(s);
   }
 
-  /* ---------- التاريخ الهجري (بتوقيت المدينة) ---------- */
+  /* ---------- التاريخ الهجري (بتوقيت المدينة) ----------
+     يتقدم بعد المغرب (اليوم الشرعي) — متسقاً مع شريط رمضان والمناسبات */
   function hijriString(instant) {
-    var adjusted = new Date(instant.getTime() + settings.hijriAdjust * 86400000);
+    var base = instant;
+    for (var i = 0; i < prayers.length; i++) {
+      if (prayers[i].key === 'maghrib' && prayers[i].adhan &&
+          instant.getTime() >= prayers[i].adhan.getTime()) {
+        base = new Date(instant.getTime() + 86400000);
+      }
+    }
+    var adjusted = new Date(base.getTime() + settings.hijriAdjust * 86400000);
     try {
       var fmt = new Intl.DateTimeFormat('ar-u-ca-islamic-umalqura-nu-latn',
         { timeZone: cityTimeZone() || undefined, day: 'numeric', month: 'long', year: 'numeric' });
@@ -243,7 +251,8 @@
     /* سنن الأسبوع — بعد المغرب نُذكّر بيوم الغد */
     var afterMaghrib = false;
     for (var j = 0; j < prayers.length; j++) {
-      if (prayers[j].key === 'maghrib' && now.getTime() >= prayers[j].adhan.getTime()) afterMaghrib = true;
+      if (prayers[j].key === 'maghrib' && prayers[j].adhan &&
+          now.getTime() >= prayers[j].adhan.getTime()) afterMaghrib = true;
     }
     var weekday = (cityParts(now).weekday + (afterMaghrib ? 1 : 0)) % 7;
     if (weekday === 5) {
@@ -451,8 +460,6 @@
   var lastMinuteKey = '';
   var lastDynamicSig = '';
 
-  var reloadedDay = '';
-
   function tick() {
     var now = new Date();
     var cp = cityParts(now);
@@ -461,21 +468,31 @@
     /* مساواة تامة وليس بادئة — حتى يُكتشف رجوع ساعة الجهاز (22→2) */
     if (todayKey !== dayCheck + '|computed') computeDay();
 
-    /* مرة كل دقيقة: تحديث المناسبات ووضع رمضان (يتغيران عند المغرب) */
+    /* مرة كل دقيقة: تحديث المناسبات والهجري ووضع رمضان (تتغير عند المغرب) */
     var minuteKey = dayCheck + ' ' + cp.hh + ':' + cp.mm;
     if (minuteKey !== lastMinuteKey) {
       lastMinuteKey = minuteKey;
-      var sig = JSON.stringify(hijriEventsFor(now)) + '|' + isRamadan(now);
+      var eh = effectiveHijri(now);
+      var sig = JSON.stringify(hijriEventsFor(now)) + '|' + isRamadan(now) +
+        '|' + eh.y + '-' + eh.m + '-' + eh.d;
       if (sig !== lastDynamicSig) {
         lastDynamicSig = sig;
         renderRamadanBar(now);
+        renderDates(now);
         buildPrayerCards();
         startTicker();
       }
-      /* إعادة تحميل يومية آمنة (00:20 بتوقيت المدينة) لتجديد الذاكرة والنسخة */
-      if (cp.hh === 0 && cp.mm === 20 && reloadedDay !== dayCheck) {
-        reloadedDay = dayCheck;
-        if (currentEvent(now).state === 'normal') {
+      /* إعادة تحميل يومية آمنة (00:20 بتوقيت المدينة) لتجديد الذاكرة والنسخة —
+         الختم في sessionStorage يمنع تكرار التحميل خلال نفس الدقيقة */
+      if (cp.hh === 0 && cp.mm === 20 && currentEvent(now).state === 'normal') {
+        var stamped = false;
+        try {
+          if (sessionStorage.getItem('mosqueScreen.dailyReload') !== dayCheck) {
+            sessionStorage.setItem('mosqueScreen.dailyReload', dayCheck);
+            stamped = sessionStorage.getItem('mosqueScreen.dailyReload') === dayCheck;
+          }
+        } catch (e) { stamped = false; }
+        if (stamped) {
           try { location.reload(); } catch (e) {}
         }
       }
@@ -1181,6 +1198,11 @@
     /* عند تفعيل نسخة جديدة: إعادة تحميل آمنة بعيداً عن أوقات الصلاة
        حتى تعمل الشاشة فعلياً بالكود الجديد وليس القديم */
     var hadController = !!navigator.serviceWorker.controller;
+    /* بعد Hard Reload لا يوجد controller رغم وجود SW نشط —
+       نتأكد حتى لا يضيع إشعار تحديث حقيقي */
+    navigator.serviceWorker.getRegistration().then(function (r) {
+      if (r && (r.active || r.waiting)) hadController = true;
+    }).catch(function () {});
     var refreshing = false;
     function safeReload() {
       if (refreshing) return;

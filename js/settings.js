@@ -202,10 +202,13 @@ function deepClone(o) { return JSON.parse(JSON.stringify(o)); }
 
 function currentLocation() {
   if (settings.cityId === 'custom') {
+    /* isFinite وليس || — الصفر إحداثية صحيحة (خط الاستواء/غرينتش) */
+    var la = parseFloat(settings.customCity.lat);
+    var lo = parseFloat(settings.customCity.lng);
     return {
       name: settings.customCity.name || 'موقع مخصص',
-      lat: parseFloat(settings.customCity.lat) || 31.7683,
-      lng: parseFloat(settings.customCity.lng) || 35.2137,
+      lat: isFinite(la) ? la : 31.7683,
+      lng: isFinite(lo) ? lo : 35.2137,
       tz: settings.customCity.tz || ''
     };
   }

@@ -53,6 +53,7 @@
   <script src="js/version.js"></script>
   <script src="js/praytimes.js"></script>
   <script src="js/cities.js"></script>
+  <script src="js/storage.js"></script>
   <script>
     (function () {
       'use strict';
@@ -152,52 +153,42 @@
           row('فحص الشبكة الفعلي', ok ? '✓ متصل' : '✗ غير متصل', ok ? 'ok' : 'bad');
       });
 
-      /* التخزين */
+      /* التخزين — عبر AssetStore نفسها (تنشئ المخزن بشكل سليم إن لم يوجد) */
       var st = '';
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistration().then(function (reg) {
-          st += row('Service Worker', reg ? '✓ مسجّل' : 'غير مسجّل (طبيعي على file://)', reg ? 'ok' : 'warn');
-          return caches.keys().catch(function () { return []; });
-        }).then(function (keys) {
-          st += row('نسخة الكاش', keys && keys.length ? esc(keys.join(', ')) : '—');
-          renderAssets();
-        });
-      } else { renderAssets(); }
+      var swInfo = ('serviceWorker' in navigator)
+        ? navigator.serviceWorker.getRegistration()
+            .then(function (reg) {
+              st += row('Service Worker', reg ? '✓ مسجّل' : 'غير مسجّل (طبيعي على file://)', reg ? 'ok' : 'warn');
+              return caches.keys();
+            })
+            .then(function (keys) {
+              st += row('نسخة الكاش', keys && keys.length ? esc(keys.join(', ')) : '—');
+            })
+            .catch(function () {
+              st += row('Service Worker', 'غير متاح هنا', 'warn');
+            })
+        : Promise.resolve();
 
-      function renderAssets() {
-        var req = indexedDB.open('mosqueScreenAssets', 1);
-        req.onsuccess = function () {
-          var db = req.result;
-          try {
-            var tx = db.transaction('assets', 'readonly');
-            var store = tx.objectStore('assets');
-            var items = [
-              ['mosquePhoto', 'صورة الجامع'],
-              ['adhanAudio', 'ملف أذان مرفوع'],
-              ['backgrounds', 'صور الخلفيات']
-            ];
-            var done = 0;
-            items.forEach(function (it) {
-              var r = store.get(it[0]);
-              r.onsuccess = function () {
-                var v = r.result;
-                var size = v ? (Array.isArray(v)
-                  ? v.length + ' صورة'
-                  : Math.round((v.length || 0) / 1024) + ' KB') : '—';
-                st += row(it[1], size, v ? 'ok' : '');
-                if (++done === items.length) {
-                  document.getElementById('c-storage').innerHTML = st;
-                }
-              };
+      swInfo.then(function () {
+        var items = [
+          ['mosquePhoto', 'صورة الجامع'],
+          ['adhanAudio', 'ملف أذان مرفوع'],
+          ['backgrounds', 'صور الخلفيات']
+        ];
+        return Promise.all(items.map(function (it) {
+          return AssetStore.get(it[0]).catch(function () { return null; })
+            .then(function (v) {
+              var size = v ? (Array.isArray(v)
+                ? v.length + ' صورة'
+                : Math.round((v.length || 0) / 1024) + ' KB') : '—';
+              st += row(it[1], size, v ? 'ok' : '');
             });
-          } catch (e) {
-            document.getElementById('c-storage').innerHTML = st + row('IndexedDB', 'فارغ');
-          }
-        };
-        req.onerror = function () {
-          document.getElementById('c-storage').innerHTML = st + row('IndexedDB', 'غير متاح', 'bad');
-        };
-      }
+        }));
+      }).then(function () {
+        document.getElementById('c-storage').innerHTML = st;
+      }).catch(function () {
+        document.getElementById('c-storage').innerHTML = st + row('IndexedDB', 'غير متاح', 'bad');
+      });
 
       /* الصوت */
       var au = '';

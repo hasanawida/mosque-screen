@@ -159,7 +159,11 @@ var PrayTimes = (function () {
        لحظات مطلقة دقيقة مهما كانت المنطقة الزمنية للجهاز */
     function toDate(hours) {
       if (hours === null || isNaN(hours)) return null;
-      var minutes = Math.round(fixHour(hours) * 60);
+      /* لا نلفّ ما بعد منتصف الليل إلى الصباح — العشاء المتأخر (خطوط
+         العرض العالية) يبقى بعد المغرب في تسلسل اليوم الصحيح */
+      var h2 = hours;
+      if (h2 < 0) h2 += 24;
+      var minutes = Math.round(h2 * 60);
       if (typeof opts.utcBase === 'number') {
         return new Date(opts.utcBase + minutes * 60000);
       }
